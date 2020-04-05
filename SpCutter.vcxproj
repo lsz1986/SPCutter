@@ -1,0 +1,254 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Template|Win32">
+      <Configuration>Template</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <SccProjectName />
+    <SccLocalPath />
+    <Keyword>MFCProj</Keyword>
+    <ProjectGuid>{A819A55A-919F-15A7-FE3A-5C57D246E3BD}</ProjectGuid>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140_xp</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>./Debug</OutDir>
+    <IntDir>./Debug</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>../Release</OutDir>
+    <IntDir>../Release</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <Optimization>Disabled</Optimization>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <WarningLevel>Level3</WarningLevel>
+      <MinimalRebuild>true</MinimalRebuild>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AssemblerListingLocation>.\Debug\</AssemblerListingLocation>
+      <BrowseInformation>true</BrowseInformation>
+      <PrecompiledHeaderOutputFile>.\Debug\SpCutter.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <ObjectFileName>.\Debug\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Debug\</ProgramDataBaseFileName>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+    </ClCompile>
+    <Midl>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TypeLibraryName>.\Debug\SpCutter.tlb</TypeLibraryName>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0804</Culture>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>.\Debug\SpCutter.bsc</OutputFile>
+    </Bscmake>
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>./Debug/SpCutter.exe</OutputFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <StringPooling>true</StringPooling>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <Optimization>MaxSpeed</Optimization>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
+      <BrowseInformation>true</BrowseInformation>
+      <PrecompiledHeaderOutputFile>.\Release\SpCutter.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <ObjectFileName>.\Release\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
+    </ClCompile>
+    <Midl>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TypeLibraryName>.\Release\SpCutter.tlb</TypeLibraryName>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0804</Culture>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>.\Release\SpCutter.bsc</OutputFile>
+    </Bscmake>
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>./Release/SpCutter.exe</OutputFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="ButtonClr.cpp" />
+    <ClCompile Include="Charactor.cpp" />
+    <ClCompile Include="Curve.cpp" />
+    <ClCompile Include="DispSet.cpp" />
+    <ClCompile Include="DlgAboutGm.cpp" />
+    <ClCompile Include="DlgMacPara.cpp" />
+    <ClCompile Include="DlgManCtrl.cpp" />
+    <ClCompile Include="DlgProtectPara.cpp" />
+    <ClCompile Include="DlgRegInfo.cpp" />
+    <ClCompile Include="DlgSetClr.cpp" />
+    <ClCompile Include="DlgSetDir.cpp" />
+    <ClCompile Include="DlgSuperUser.cpp" />
+    <ClCompile Include="Global.cpp" />
+    <ClCompile Include="HP45_SpACtrl.cpp" />
+    <ClCompile Include="HP45_SpBCtrl.cpp" />
+    <ClCompile Include="HpglFile.cpp" />
+    <ClCompile Include="HyperLink.cpp" />
+    <ClCompile Include="IUT308_SpACtrl.cpp" />
+    <ClCompile Include="IUT308_SpBCtrl.cpp" />
+    <ClCompile Include="MacSet.cpp" />
+    <ClCompile Include="MainFrm.cpp" />
+    <ClCompile Include="MyDlgBar.cpp" />
+    <ClCompile Include="MyListView.cpp" />
+    <ClCompile Include="MyReg.cpp" />
+    <ClCompile Include="MyUSB.cpp" />
+    <ClCompile Include="OnePage.cpp" />
+    <ClCompile Include="SpCutter.cpp" />
+    <ClCompile Include="SpCutterDoc.cpp" />
+    <ClCompile Include="SpCutterView.cpp" />
+    <ClCompile Include="StdAfx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdafx.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="T_Cut.cpp" />
+    <ClCompile Include="T_Plot.cpp" />
+    <ClCompile Include="Thread.cpp" />
+    <ClCompile Include="ThreadAutoConnect.cpp" />
+    <ClCompile Include="ThreadTimeDetect.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="SpCutter.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ButtonClr.h" />
+    <ClInclude Include="Charactor.h" />
+    <ClInclude Include="Curve.h" />
+    <ClInclude Include="DispSet.h" />
+    <ClInclude Include="DlgAboutGm.h" />
+    <ClInclude Include="DlgMacPara.h" />
+    <ClInclude Include="DLgManCtrl.h" />
+    <ClInclude Include="DlgProtectPara.h" />
+    <ClInclude Include="DlgRegInfo.h" />
+    <ClInclude Include="DlgSetClr.h" />
+    <ClInclude Include="DlgSetDir.h" />
+    <ClInclude Include="DlgSuperUser.h" />
+    <ClInclude Include="EthInfo.h" />
+    <ClInclude Include="Global.h" />
+    <ClInclude Include="GlobalDef.h" />
+    <ClInclude Include="HpglFile.h" />
+    <ClInclude Include="HyperLink.h" />
+    <ClInclude Include="MacSet.h" />
+    <ClInclude Include="MainFrm.h" />
+    <ClInclude Include="MyDlgBar.h" />
+    <ClInclude Include="MyListView.h" />
+    <ClInclude Include="MyReg.h" />
+    <ClInclude Include="MyUSB.h" />
+    <ClInclude Include="OnePage.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="SpCutter.h" />
+    <ClInclude Include="SpCutterDoc.h" />
+    <ClInclude Include="SpCutterView.h" />
+    <ClInclude Include="StdAfx.h" />
+    <ClInclude Include="Thread.h" />
+    <ClInclude Include="user_usb_cmd.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="res\ALLICO.ico" />
+    <CustomBuild Include="res\fon_en.bin">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="res\fon_hz.bin">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="res\GMICO.ico" />
+    <CustomBuild Include="res\SpCutter.ico" />
+    <CustomBuild Include="res\SpCutter.rc2">
+      <FileType>RC</FileType>
+    </CustomBuild>
+    <CustomBuild Include="res\SpCutterDoc.ico" />
+    <CustomBuild Include="res\toolbar1.bmp" />
+    <CustomBuild Include="res\Xn1.ico" />
+    <CustomBuild Include="res\Xn2.ico" />
+    <CustomBuild Include="res\Xp1.ico" />
+    <CustomBuild Include="res\Xp2.ico" />
+    <CustomBuild Include="res\Yn1.ico" />
+    <CustomBuild Include="res\Yn2.ico" />
+    <CustomBuild Include="res\Yp1.ico" />
+    <CustomBuild Include="res\Yp2.ico" />
+    <CustomBuild Include="res\yp4.ico" />
+    <CustomBuild Include="ReadMe.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,7 @@
+; Dll_EN.def : Declares the module parameters for the DLL.
+
+LIBRARY      "Dll_EN"
+DESCRIPTION  'Dll_EN Windows Dynamic Link Library'
+
+EXPORTS
+    ; Explicit exports can go here
