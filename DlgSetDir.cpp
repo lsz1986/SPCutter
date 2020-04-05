@@ -26,7 +26,6 @@ CDlgSetDir::CDlgSetDir(CWnd* pParent /*=NULL*/)
 	m_bMoveToLeft = FALSE;
 	m_bMoveToBottom = FALSE;
 	m_nPltPageLen = 0;
-	m_nMaxCurveLen = 0;
 	m_nY1000Scale = 1000;
 	m_nX1000Scale = 1000;
 	m_bFindOutline = FALSE;
@@ -46,8 +45,6 @@ void CDlgSetDir::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDCHK_IG_BLANK_BOTTOM, m_bMoveToBottom);
 	DDX_Text(pDX, IDCE_PLT_SEC_LEN, m_nPltPageLen);
 	DDV_MinMaxUInt(pDX, m_nPltPageLen, 0, 3000);
-	DDX_Text(pDX, IDCE_CURVE_LEN, m_nMaxCurveLen);
-	DDV_MinMaxUInt(pDX, m_nMaxCurveLen, 1, 8);
 	DDX_Text(pDX, IDCE_YSCALE, m_nY1000Scale);
 	DDV_MinMaxUInt(pDX, m_nY1000Scale, 100, 10000);
 	DDX_Text(pDX, IDCE_XSCALE, m_nX1000Scale);
@@ -69,17 +66,16 @@ void CDlgSetDir::OnOK()
 {
 	// TODO: Add extra validation here
 	UpdateData(TRUE);
-	gMacSet.setAutoDelPlt(m_bAutoDelPlt);
-	gMacSet.setFirstPageConfirm(m_bFirstPageConfirm);
-	gMacSet.setPltScale(m_nPltScale);
-	gMacSet.setAutoMoveToLeft(m_bMoveToLeft);
-	gMacSet.setAutoMoveToBottom(m_bMoveToBottom);
-	gMacSet.setPltPageLen(m_nPltPageLen);
-	gMacSet.setCurveLen(m_nMaxCurveLen);
+	gSet.setAutoDelPlt(m_bAutoDelPlt);
+	gSet.setFirstPageConfirm(m_bFirstPageConfirm);
+	gSet.setPltScale(m_nPltScale);
+	gSet.setAutoMoveToLeft(m_bMoveToLeft);
+	gSet.setAutoMoveToBottom(m_bMoveToBottom);
+	gSet.setPltPageLen(m_nPltPageLen);
 
-	gMacSet.setPltSaveScaleX(m_nX1000Scale);
-	gMacSet.setPltSaveScaleY(m_nY1000Scale);
-	gMacSet.setFindOutLine(m_bFindOutline);
+	gSet.setPltSaveScaleX(m_nX1000Scale);
+	gSet.setPltSaveScaleY(m_nY1000Scale);
+	gSet.setFindOutLine(m_bFindOutline);
 	CDialog::OnOK();
 }
 
@@ -87,18 +83,17 @@ BOOL CDlgSetDir::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
-	m_bAutoDelPlt = gMacSet.getAutoDelPlt();
-	m_bFirstPageConfirm = gMacSet.getFirstPageConfirm();
-	m_nPltScale = gMacSet.getPltScale();
-	m_bMoveToLeft = gMacSet.getAutoMoveToLeft();
-	m_bMoveToBottom = gMacSet.getAutoMoveToBottom();
-	m_nPltPageLen = gMacSet.getPltPageLen();
-	m_nMaxCurveLen = gMacSet.getCurveLen();
+	m_bAutoDelPlt = gSet.getAutoDelPlt();
+	m_bFirstPageConfirm = gSet.getFirstPageConfirm();
+	m_nPltScale = gSet.getPltScale();
+	m_bMoveToLeft = gSet.getAutoMoveToLeft();
+	m_bMoveToBottom = gSet.getAutoMoveToBottom();
+	m_nPltPageLen = gSet.getPltPageLen();
 
-	m_nX1000Scale = gMacSet.getPltSaveScaleX();
-	m_nY1000Scale = gMacSet.getPltSaveScaleY();
+	m_nX1000Scale = gSet.getPltSaveScaleX();
+	m_nY1000Scale = gSet.getPltSaveScaleY();
 
-	m_bFindOutline = gMacSet.getFindOutLine();
+	m_bFindOutline = gSet.getFindOutLine();
 	UpdateData(false);
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE

@@ -10,13 +10,13 @@ int g_iSpdataSizeZipped;
 
 // char g_SpDataOrg[MAX_PIXEL][40]; 
 // char g_SpDataSend[MAX_PIXEL][44];
-// 
+char g_SpDataOrg[MAX_PIXEL][80]; 
+char g_IUT308_SpDataSend[MAX_PIXEL][88];
+char g_HP45_SpDataSend[MAX_PIXEL][44];
+
+
 // unsigned short g_TempSpDataSend[MAX_PIXEL*44];
 // unsigned short g_ZippedSpDataSend[MAX_PIXEL*44];
-
-char g_SpDataOrg[MAX_PIXEL][80]; 
-char g_SpDataSend[MAX_PIXEL][88];
-
 unsigned short g_TempSpDataSend[MAX_PIXEL*88];
 unsigned short g_ZippedSpDataSend[MAX_PIXEL*88];
 
@@ -30,6 +30,7 @@ u8 g_IUT308_309To616Pixel[308];
 u8 g_HP45_SpAOneLinePixel[22][8];
 u8 g_HP45_SpBOneLinePixel[22][8];
 
+
 u8 g_IUT308_SpAOneLinePixel[44][8];
 u8 g_IUT308_SpBOneLinePixel[44][8];
 
@@ -41,13 +42,13 @@ void HP45_SetSpDataZero(void) //用0填充 g_SpDataOrg
 	int i,j;
 	for (i=0; i<MAX_PIXEL; i++)
 	{
-		for (j=0;j<40;j++)
+		for (j=0;j<80;j++)
 		{
 			g_SpDataOrg[i][j] = 0;
 		}
 		for (j=0;j<44;j++)
 		{
-			g_SpDataSend[i][j] = 0;
+			g_HP45_SpDataSend[i][j] = 0;
 		}
 	}
 }
@@ -63,7 +64,7 @@ void IUT308_SetSpDataZero(void) //用0填充 g_SpDataOrg
 		}
 		for (j=0;j<88;j++)
 		{
-			g_SpDataSend[i][j] = 0;
+			g_IUT308_SpDataSend[i][j] = 0;
 		}
 	}
 }
@@ -72,11 +73,11 @@ void CalcPlotPackSum(void) //计算喷墨数据的包数
 {
 	if( (gWorkingPage.m_nPlotXMax == 0)&&(gWorkingPage.m_nPlotYMax == 0) )
 	{
-		gnPackSum = 0;
+		gPackSumPlotOnly = 0;
 		return;
 	}
 	int nDotsOfOneSp;
-	if (gMacSet.getSpType() == 1)
+	if (gSet.getSpType() == 1)
 	{
 		nDotsOfOneSp = 308;
 	}
@@ -85,21 +86,21 @@ void CalcPlotPackSum(void) //计算喷墨数据的包数
 		nDotsOfOneSp = 150;
 	}
 
-	g_iPlotPixelX = ftoi(gWorkingPage.m_nPlotXMax/40.0/MM_P_DOTX*gMacSet.getPltScale()*10.0/gMacSet.get10000X()+2*gMacSet.getLineWidth());
-	g_iBmpPixelY = ftoi(gWorkingPage.m_nPlotYMax/40.0*gMacSet.getPPMMY()/gMacSet.getPPDOTY() *gMacSet.getPltScale()*10.0/gMacSet.get10000Y()+2*gMacSet.getLineWidth());
-	g_iMacPixelY = g_iBmpPixelY+SPLR_DOT_MAX+gMacSet.getSp12EY();
+	g_iPlotPixelX = ftoi(gWorkingPage.m_nPlotXMax/40.0/MM_P_DOTX*gSet.getPltScale()*10.0/gSet.get10000X()+2*gSet.getLineWidth());
+	g_iBmpPixelY = ftoi(gWorkingPage.m_nPlotYMax/40.0*gSet.getPPMMY()/gSet.getPPDOTY() *gSet.getPltScale()*10.0/gSet.get10000Y()+2*gSet.getLineWidth());
+	g_iMacPixelY = g_iBmpPixelY+SPLR_DOT_MAX+gSet.getSp12EY();
 
-	if (0 == gMacSet.getSpStat()) //是双喷
+	if (0 == gSet.getSpStat()) //是双喷
 	{
-		gnPackSum = g_iPlotPixelX / (nDotsOfOneSp*2-gMacSet.getSpEX());
-		if( 0 != (g_iPlotPixelX % (nDotsOfOneSp*2-gMacSet.getSpEX())) )
-			gnPackSum++;
+		gPackSumPlotOnly = g_iPlotPixelX / (nDotsOfOneSp*2-gSet.getSpEX());
+		if( 0 != (g_iPlotPixelX % (nDotsOfOneSp*2-gSet.getSpEX())) )
+			gPackSumPlotOnly++;
 	}
 	else
 	{
-		gnPackSum = g_iPlotPixelX / nDotsOfOneSp;
+		gPackSumPlotOnly = g_iPlotPixelX / nDotsOfOneSp;
 		if( 0 != (g_iPlotPixelX % nDotsOfOneSp ) )
-			gnPackSum++;
+			gPackSumPlotOnly++;
 	}
 	return;
 }
@@ -113,7 +114,7 @@ void GetOnePackOrgData(int nPackNo) //获取一包喷墨数据，存入g_SpDataOrg中
 	CDC *pMemDC = NULL;
 	int nXPixelStart;
 	int nDotsOfOneSp;
-	if (gMacSet.getSpType() == 1)
+	if (gSet.getSpType() == 1)
 	{
 		nDotsOfOneSp = 308;
 	}
@@ -128,9 +129,9 @@ void GetOnePackOrgData(int nPackNo) //获取一包喷墨数据，存入g_SpDataOrg中
     pMemDC->Attach(hdcMem);
 
 	bitMap.CreateBitmap(640, g_iBmpPixelY, 1, 1, g_SpDataOrg); 
-	if (0 == gMacSet.getSpStat()) //是双喷
+	if (0 == gSet.getSpStat()) //是双喷
 	{
-		nXPixelStart = nPackNo*(nDotsOfOneSp*2-gMacSet.getSpEX());
+		nXPixelStart = nPackNo*(nDotsOfOneSp*2-gSet.getSpEX());
 	}
 	else
 	{
@@ -181,8 +182,8 @@ void HP45_Get150To300Pixel(int nYPixel) //从 g_SpDataOrg 获取一个点行的数据
 {
 	int i,j;
 	int nStartBit,nEndBit;
-	nStartBit = 150-gMacSet.getSpEX();
-	nEndBit = 300-gMacSet.getSpEX();
+	nStartBit = 150-gSet.getSpEX();
+	nEndBit = 300-gSet.getSpEX();
 	for (i=0;i<150;i++)
 	{
 		g_Hp45_150To300Pixel[i] = 0;
@@ -210,7 +211,7 @@ void IUT308_Get001To308Pixel(int nYPixel) //从 g_SpDataOrg 获取一个点行的数据
 		g_IUT308_001To308Pixel[i] = 0;
 	}
 //	for (i=0;i<44;i++)
-	for (i=0;i<38;i++)
+	for (i=0;i<39;i++) //20161223  38->39
 	{
 		for (j=0;j<8;j++)
 		{
@@ -229,13 +230,13 @@ void IUT308_Get309To616Pixel(int nYPixel) //从 g_SpDataOrg 获取一个点行的数据
 {
 	int i,j;
 	int nStartBit,nEndBit;
-	nStartBit = 308-gMacSet.getSpEX();
-	nEndBit = 616-gMacSet.getSpEX();
+	nStartBit = 308-gSet.getSpEX();
+	nEndBit = 616-gSet.getSpEX();
 	for (i=0;i<308;i++)
 	{
 		g_IUT308_309To616Pixel[i] = 0;
 	}
-	for (i=38;i<76;i++)
+	for (i=38;i<77;i++) //20161223 76->77
 	{
 		for (j=0;j<8;j++)
 		{
@@ -255,9 +256,9 @@ void HP45_ConvertOrgDataToSendData(int packNo)
 	int i,j;
 	int SP12SPACE;
 
-	SP12SPACE = gMacSet.getSp12EY();
+	SP12SPACE = gSet.getSp12EY();
 
-	switch (gMacSet.getSpStat())
+	switch (gSet.getSpStat())
 	{
 		case 0:
 		for (i=0;i<g_iMacPixelY;i++)
@@ -269,11 +270,11 @@ void HP45_ConvertOrgDataToSendData(int packNo)
 			HP45_ZipSpData();
 			for (j=0;j<22;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
+				g_HP45_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
 			}
 			for (j=0;j<22;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+22] = g_SpBOneLinePixelZipped[j];
+				g_HP45_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+22] = g_SpBOneLinePixelZipped[j];
 			}
 		}
 		break;
@@ -287,11 +288,11 @@ void HP45_ConvertOrgDataToSendData(int packNo)
 			HP45_ZipSpData();
 			for (j=0;j<22;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
+				g_HP45_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
 			}
 			for (j=0;j<22;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+22] = g_SpBOneLinePixelZipped[j];
+				g_HP45_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+22] = g_SpBOneLinePixelZipped[j];
 			}
 		}
 		break;
@@ -305,11 +306,11 @@ void HP45_ConvertOrgDataToSendData(int packNo)
 			HP45_ZipSpData();
 			for (j=0;j<22;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
+				g_HP45_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
 			}
 			for (j=0;j<22;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+22] = g_SpBOneLinePixelZipped[j];
+				g_HP45_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+22] = g_SpBOneLinePixelZipped[j];
 			}
 		}
 		break;
@@ -321,11 +322,11 @@ void IUT308_ConvertOrgDataToSendData(int packNo)
 	int i,j;
 	int SP12SPACE;
 	
-	SP12SPACE = gMacSet.getSp12EY();
+	SP12SPACE = gSet.getSp12EY();
 	
-	switch (gMacSet.getSpStat())
+	switch (gSet.getSpStat())
 	{
-	case 0:
+		case 0:
 		for (i=0;i<g_iMacPixelY;i++)
 		{
 			IUT308_Get001To308Pixel(i); //
@@ -335,16 +336,16 @@ void IUT308_ConvertOrgDataToSendData(int packNo)
 			IUT308_ZipSpData();
 			for (j=0;j<44;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
+				g_IUT308_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
 			}
 			for (j=0;j<44;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+44] = g_SpBOneLinePixelZipped[j];
+				g_IUT308_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+44] = g_SpBOneLinePixelZipped[j];
 			}
 		}
 		break;
 		
-	case 1:
+		case 1:
 		for (i=0;i<g_iMacPixelY;i++)
 		{
 			IUT308_Get001To308Pixel(i);
@@ -353,16 +354,16 @@ void IUT308_ConvertOrgDataToSendData(int packNo)
 			IUT308_ZipSpData();
 			for (j=0;j<44;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
+				g_IUT308_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
 			}
 			for (j=0;j<44;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+44] = g_SpBOneLinePixelZipped[j];
+				g_IUT308_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+44] = g_SpBOneLinePixelZipped[j];
 			}
 		}
 		break;
 		
-	case 2:
+		case 2:
 		for (i=0;i<g_iMacPixelY;i++)
 		{
 			IUT308_Get001To308Pixel(i);
@@ -371,11 +372,11 @@ void IUT308_ConvertOrgDataToSendData(int packNo)
 			IUT308_ZipSpData();
 			for (j=0;j<44;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
+				g_IUT308_SpDataSend[i+SPLR_DOT_MAX][j] = g_SpAOneLinePixelZipped[j];
 			}
 			for (j=0;j<44;j++)
 			{
-				g_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+44] = g_SpBOneLinePixelZipped[j];
+				g_IUT308_SpDataSend[i+SPLR_DOT_MAX+SP12SPACE][j+44] = g_SpBOneLinePixelZipped[j];
 			}
 		}
 		break;
@@ -480,7 +481,7 @@ void DrawBmp(CDC *pDC,int StartPixelX)
 	nCurveSize = gWorkingPage.m_CurveList.GetSize();
 
 	pDC->SetBkColor(RGB(0, 0, 0));
-	pen.CreatePen(LT_SOLID,gMacSet.getLineWidth(),RGB(255,255,255));
+	pen.CreatePen(LT_SOLID,gSet.getLineWidth(),RGB(255,255,255));
 
 	pOldPen = pDC->SelectObject(&pen);
 
@@ -491,15 +492,15 @@ void DrawBmp(CDC *pDC,int StartPixelX)
 		if (pCurve->m_nPenNum <= 1)
 		{
 			pt= pCurve->m_pointList->GetAt(0);
-			iTempX = ftoi( pt.x/40.0/MM_P_DOTX*gMacSet.getPltScale()*10.0/gMacSet.get10000X() )-StartPixelX;
-			iTempY = ftoi( pt.y/40.0*gMacSet.getPPMMY()/gMacSet.getPPDOTY()*gMacSet.getPltScale()*10.0/gMacSet.get10000Y()); //改为在下位机将图形翻转
-			pDC->MoveTo(iTempX+gMacSet.getLineWidth()-1,iTempY+gMacSet.getLineWidth()-1);
+			iTempX = ftoi( pt.x/40.0/MM_P_DOTX*gSet.getPltScale()*10.0/gSet.get10000X() )-StartPixelX;
+			iTempY = ftoi( pt.y/40.0*gSet.getPPMMY()/gSet.getPPDOTY()*gSet.getPltScale()*10.0/gSet.get10000Y()); //改为在下位机将图形翻转
+			pDC->MoveTo(iTempX+gSet.getLineWidth()-1,iTempY+gSet.getLineWidth()-1);
 			for (j=1;j<pCurve->m_pointList->GetSize();j++)
 			{
 				pt= pCurve->m_pointList->GetAt(j);
-				iTempX = ftoi( pt.x/40.0/MM_P_DOTX*gMacSet.getPltScale()*10.0/gMacSet.get10000X() )-StartPixelX;
-				iTempY = ftoi( pt.y/40.0*gMacSet.getPPMMY()/gMacSet.getPPDOTY()*gMacSet.getPltScale()*10.0/gMacSet.get10000Y() );
-				pDC->LineTo(iTempX+gMacSet.getLineWidth()-1,iTempY+gMacSet.getLineWidth()-1);
+				iTempX = ftoi( pt.x/40.0/MM_P_DOTX*gSet.getPltScale()*10.0/gSet.get10000X() )-StartPixelX;
+				iTempY = ftoi( pt.y/40.0*gSet.getPPMMY()/gSet.getPPDOTY()*gSet.getPltScale()*10.0/gSet.get10000Y() );
+				pDC->LineTo(iTempX+gSet.getLineWidth()-1,iTempY+gSet.getLineWidth()-1);
 			}
 		}
 	}
@@ -514,8 +515,8 @@ void HP45_ZipSpSendData() //将要发送的数据压缩存入 g_ZippedSpDataSend 中
 	g_iSpdataSizeZipped = 0;
 	nSizeOrg = (g_iMacPixelY+SPLR_DOT_MAX)*22; //unsigned short数据大小
 	
-	memcpy( (char*)(&g_TempSpDataSend[0]),(char*)&(g_SpDataSend[0][0]), (g_iMacPixelY+SPLR_DOT_MAX)*44);
-	memset( (char*)(&g_ZippedSpDataSend[0]),0,MAX_PIXEL*44);
+	memcpy( (char*)(&g_TempSpDataSend[0]),(char*)&(g_HP45_SpDataSend[0][0]), (g_iMacPixelY+SPLR_DOT_MAX)*44);
+	memset( (char*)(&g_ZippedSpDataSend[0]),0,MAX_PIXEL*88);
 	
 	i=0;
 	j=0;
@@ -567,9 +568,9 @@ void IUT308_ZipSpSendData() //将要发送的数据压缩存入 g_ZippedSpDataSend 中
 	int i,j;
 	int nSizeOrg,nZeroNum;
 	g_iSpdataSizeZipped = 0;
-	nSizeOrg = (g_iMacPixelY+SPLR_DOT_MAX)*44; //unsigned short数据大小
-	
-	memcpy( (char*)(&g_TempSpDataSend[0]),(char*)&(g_SpDataSend[0][0]), (g_iMacPixelY+SPLR_DOT_MAX)*88);
+	nSizeOrg = (g_iMacPixelY + SPLR_DOT_MAX) * 44; //20161222
+
+	memcpy( (char*)(&g_TempSpDataSend[0]),(char*)&(g_IUT308_SpDataSend[0][0]), (g_iMacPixelY+SPLR_DOT_MAX)*88);
 	memset( (char*)(&g_ZippedSpDataSend[0]),0,MAX_PIXEL*88);
 	
 	i=0;

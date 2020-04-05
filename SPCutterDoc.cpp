@@ -88,13 +88,13 @@ void CSpCutterDoc::OnSaveAsPlt(CString strFileName)
 			if (nPLSize>0)
 			{
 				str.Format("PU%d,%d;PD",
-					(int)((double)pCurve->m_pointList->GetAt(0).x * gMacSet.getPltSaveScaleX()/1000.0),
-					(int)((double)pCurve->m_pointList->GetAt(0).y * gMacSet.getPltSaveScaleY()/1000.0) );
+					(int)((double)pCurve->m_pointList->GetAt(0).x * gSet.getPltSaveScaleX()/1000.0),
+					(int)((double)pCurve->m_pointList->GetAt(0).y * gSet.getPltSaveScaleY()/1000.0) );
 				for (j=0;j<nPLSize;j++)
 				{
 					str1.Format("%d,%d,",
-						(int)((double)pCurve->m_pointList->GetAt(j).x * gMacSet.getPltSaveScaleX()/1000.0),
-						(int)((double)pCurve->m_pointList->GetAt(j).y * gMacSet.getPltSaveScaleY()/1000.0) );
+						(int)((double)pCurve->m_pointList->GetAt(j).x * gSet.getPltSaveScaleX()/1000.0),
+						(int)((double)pCurve->m_pointList->GetAt(j).y * gSet.getPltSaveScaleY()/1000.0) );
 					str+=str1;
 				}
 				pltFile.Write(str.GetBuffer(0),str.GetLength()-1);
@@ -202,11 +202,11 @@ void CSpCutterDoc::CheckDocData()
 		pPage->OnRemoveInvalidPoints();
 		pPage->OnCheckPageData();
 		pPage->OnGetPageMaxMin();
-		if (gMacSet.getAutoMoveToLeft())
+		if (gSet.getAutoMoveToLeft())
 		{
 			pPage->OnMoveToLeft();
 		}
-		if (gMacSet.getAutoMoveToBottom())
+		if (gSet.getAutoMoveToBottom())
 		{
 			pPage->OnMoveToBottom();
 		}
@@ -220,7 +220,7 @@ void CSpCutterDoc::CheckDocData()
 			nPageIndex--;
 			nPageSum--;
 		}
-		else if (gMacSet.getFindOutLine())
+		else if (gSet.getFindOutLine())
 		{
 			pPage->OnSearchOutLine();
 		}

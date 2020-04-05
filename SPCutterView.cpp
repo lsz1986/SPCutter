@@ -40,6 +40,9 @@ BEGIN_MESSAGE_MAP(CSpCutterView, CView)
 	ON_COMMAND(IDM_ALL_TO_CUT, OnAllToCut)
 	ON_COMMAND(IDM_BREAK_CURVE, OnBreakCurve)
 	//}}AFX_MSG_MAP
+	ON_WM_MOUSEHWHEEL()
+	ON_WM_MOUSEWHEEL()
+	ON_WM_RBUTTONUP()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -48,6 +51,7 @@ END_MESSAGE_MAP()
 CSpCutterView::CSpCutterView()
 {
 	m_bLBDown = FALSE;
+	m_bRBDown = FALSE;
 	m_nCurrentPage = 0;
 }
 
@@ -272,7 +276,7 @@ void CSpCutterView::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	if(m_bLBDown)
 	{
-		if (TBS_SEL == gMacSet.getToolBarState())
+		if (TBS_SEL == gSet.getToolBarState())
 		{
 			CClientDC dc(this);
 			OnPrepareDC(&dc);
@@ -340,48 +344,46 @@ void CSpCutterView::OnLButtonUp(UINT nFlags, CPoint point)
 
 void CSpCutterView::OnMouseMove(UINT nFlags, CPoint point) 
 {
-	// TODO: Add your message handler code here and/or call default
-	CClientDC dc(this);
-	CPen pen;
 	CPen *pOldPen;
-	
-	OnPrepareDC(&dc);
-	dc.DPtoLP(&point); //此时的Point是考虑到Scroll之后的坐标
-	
-	pen.CreatePen(2, 1, RGB(0, 0, 0));
-	pOldPen = dc.SelectObject(&pen);
-	
+	CPen pen;
+	CClientDC dc(this);
+
+	CPoint HpglPt = ptScrToHpgl(point);
+	CMainFrame*pMainFrame = (CMainFrame*)::AfxGetMainWnd();
+//	pMainFrame->SetMousePosText(HpglPt);
+
 	if (m_bLBDown)
 	{
-		if (gMacSet.getToolBarState() == TBS_SEL)
-		{
-			dc.SetROP2(R2_XORPEN);
-			
-			dc.MoveTo(m_ptLBDown);
-			dc.LineTo(m_ptLBDown.x, m_ptMouseMove.y);
-			dc.LineTo(m_ptMouseMove);
-			dc.LineTo(m_ptMouseMove.x, m_ptLBDown.y);
-			dc.LineTo(m_ptLBDown);
-			
-			dc.MoveTo(m_ptLBDown);
-			dc.LineTo(m_ptLBDown.x, point.y);
-			dc.LineTo(point);
-			dc.LineTo(point.x, m_ptLBDown.y);
-			dc.LineTo(m_ptLBDown);
-		}
-		if (gMacSet.getToolBarState() == TBS_MOVE)
-		{
-			int deltaX,deltaY;
-			deltaX = point.x-m_ptMouseMove.x;
-			deltaY = point.y-m_ptMouseMove.y;
-			gDispSet.setDispStartX(gDispSet.getDispStartX()-deltaX);
-			gDispSet.setDispStartY(gDispSet.getDispStartY()-deltaY);
-			OnReDraw();
-		}
-		m_ptMouseMove = point;
+		pen.CreatePen(2, 1, RGB(0, 0, 0));
+		pOldPen = dc.SelectObject(&pen);
+		dc.SetROP2(R2_XORPEN);
+
+		dc.MoveTo(m_ptLBDown);
+		dc.LineTo(m_ptLBDown.x, m_ptMouseMove.y);
+		dc.LineTo(m_ptMouseMove);
+		dc.LineTo(m_ptMouseMove.x, m_ptLBDown.y);
+		dc.LineTo(m_ptLBDown);
+
+		dc.MoveTo(m_ptLBDown);
+		dc.LineTo(m_ptLBDown.x, point.y);
+		dc.LineTo(point);
+		dc.LineTo(point.x, m_ptLBDown.y);
+		dc.LineTo(m_ptLBDown);
+
+		dc.SelectObject(pOldPen);
+		pen.DeleteObject();
+
 	}
-	dc.SelectObject(pOldPen);
-	pen.DeleteObject();
+	if (m_bRBDown)
+	{
+		int deltaX, deltaY;
+		deltaX = point.x - m_ptMouseMove.x;
+		deltaY = point.y - m_ptMouseMove.y;
+		gDispSet.setDispStartX(gDispSet.getDispStartX() - deltaX);
+		gDispSet.setDispStartY(gDispSet.getDispStartY() - deltaY);
+		OnReDraw();
+	}
+	m_ptMouseMove = point;
 	CView::OnMouseMove(nFlags, point);
 }
 
@@ -543,11 +545,9 @@ void CSpCutterView::OnDelPlotData()
 void CSpCutterView::OnRButtonDown(UINT nFlags, CPoint point) 
 {
 	// TODO: Add your message handler code here and/or call default
-	CMenu menu;
-	CPoint pt;
-	menu.LoadMenu(IDR_POPMENU_VIEW);
-	GetCursorPos(&pt);
-	menu.GetSubMenu(0)->TrackPopupMenu(TPM_LEFTALIGN|TPM_LEFTBUTTON|TPM_RIGHTBUTTON, pt.x, pt.y, this);
+	m_bRBDown = TRUE;
+	m_ptMouseMove = point;
+	m_ptRBDown = point;
 	CView::OnRButtonDown(nFlags, point);
 }
 
@@ -567,7 +567,7 @@ void CSpCutterView::ZoomOut()
 
 void CSpCutterView::OnSetViewCursor()
 {
-	if(TBS_MOVE == gMacSet.getToolBarState())
+	if(TBS_MOVE == gSet.getToolBarState())
 	{
 		SetClassLong(this->GetSafeHwnd(),GCL_HCURSOR ,(LONG)LoadCursor(NULL,IDC_SIZEALL));
 	}
@@ -597,4 +597,72 @@ void CSpCutterView::OnBreakCurve()
 	COnePage* pPage = GetDocument()->m_ArrayPage.GetAt(0);
 	pPage->OnSpliteCurveByAngle(OVERCUT_ANGLE*PI/180.0);
 	Invalidate();
+}
+
+void CSpCutterView::OnViewZoomIn(CPoint ptMouse)
+{
+	CPoint ptMouseNew;
+	CPoint ptHpgl;
+	int deltaX, deltaY;
+	ptHpgl = ptScrToHpgl(ptMouse);
+	gDispSet.setDispScale(gDispSet.getDispScale()*1.25);
+	ptMouseNew = ptHpglToScr(ptHpgl);
+	deltaX = ptMouseNew.x - ptMouse.x;
+	deltaY = ptMouseNew.y - ptMouse.y;
+
+	gDispSet.setDispStartX(gDispSet.getDispStartX() + deltaX);
+	gDispSet.setDispStartY(gDispSet.getDispStartY() + deltaY);
+	OnReDraw();
+}
+
+void CSpCutterView::OnViewZoomOut(CPoint ptMouse)
+{
+	CPoint ptMouseNew;
+	CPoint ptHpgl;
+	int deltaX, deltaY;
+	ptHpgl = ptScrToHpgl(ptMouse);
+	gDispSet.setDispScale(gDispSet.getDispScale()*0.8);
+	ptMouseNew = ptHpglToScr(ptHpgl);
+	deltaX = ptMouseNew.x - ptMouse.x;
+	deltaY = ptMouseNew.y - ptMouse.y;
+
+	gDispSet.setDispStartX(gDispSet.getDispStartX() + deltaX);
+	gDispSet.setDispStartY(gDispSet.getDispStartY() + deltaY);
+	OnReDraw();
+}
+
+
+BOOL CSpCutterView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	if (zDelta > 0)
+	{
+		OnViewZoomIn(pt);
+	}
+	else
+	{
+		OnViewZoomOut(pt);
+	}
+	return CView::OnMouseWheel(nFlags, zDelta, pt);
+}
+
+
+void CSpCutterView::OnRButtonUp(UINT nFlags, CPoint point)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	double deltaX, deltaY;
+	m_bRBDown = FALSE;
+
+	deltaX = point.x - m_ptRBDown.x;
+	deltaY = point.y - m_ptRBDown.y;
+
+	if ((fabs(deltaX) < 2) && (fabs(deltaY) < 2))
+	{
+		CMenu menu;
+		menu.LoadMenu(IDR_POPMENU_VIEW);
+		CPoint pt;
+		GetCursorPos(&pt);
+		menu.GetSubMenu(0)->TrackPopupMenu(TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON, pt.x, pt.y, this);
+	}
+	CView::OnRButtonUp(nFlags, point);
 }

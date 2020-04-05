@@ -38,9 +38,6 @@ public:
 	inline void setDispStartY(int n){m_nDispStartY = n;};
 	inline int getDispStartY(){return m_nDispStartY;};
 
-	inline void setListDispLeft(BOOL b) {m_bListDispLeft = b;};
-	inline BOOL getListDispLeft() {return m_bListDispLeft;};
-
 	inline void setScrXPixel(int n){m_nScrXPixel = n;};
 	inline int getScrXPixel(){return m_nScrXPixel;};
 
@@ -60,7 +57,6 @@ public:
 	inline int getLanguage() { return m_nLanguage; };
 	
 private:
-	BOOL m_bListDispLeft;
 	int m_nScrXPixel;
 	int m_nScrYPixel;
 	int m_nDispStartX;

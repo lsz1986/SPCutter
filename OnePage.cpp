@@ -204,13 +204,13 @@ void COnePage::OnPageAngleAdjust()
 {
 	int i;
 	CCurve* pCurve;
-	double dAngle = (100.0-gMacSet.getAngleAdjust())*0.01*PI/180.0;
+	double dAngle = (100.0-gSet.getAngleAdjust())*0.01*PI/180.0;
 	int nPageSize = m_CurveList.GetSize();
 	if (nPageSize == 0)
 	{
 		return;
 	}
-	if (gMacSet.getAngleAdjust() == 100)
+	if (gSet.getAngleAdjust() == 100)
 	{
 		return;
 	}
@@ -343,22 +343,56 @@ void COnePage::OnChangeDir()
 
 void COnePage::OnAddSpCleanData()
 {
-	int i,nSizeCurve;
+	int i,j,nSizeCurve;
 	CCurve *pCurve;
 	nSizeCurve = m_CurveList.GetSize();
-	for (i=0;i<nSizeCurve;i++)
+	if (gSet.getSpType() == 0) //HP45
 	{
-		pCurve = (CCurve *)m_CurveList.GetAt(i);
-		pCurve->OnMoveCurveTo(-25*40,0); //Õº–Œ”““∆2.5cm
+		for (i = 0; i<nSizeCurve; i++)
+		{
+			pCurve = (CCurve *)m_CurveList.GetAt(i);
+			pCurve->OnMoveCurveTo(-25 * 40, 0); //Õº–Œ”““∆2.5cm
+		}
+		for (i = 0; i<100; i++)
+		{
+			if (i % 25 == 0)
+			{
+				for (j = 0; j < 10; j++)
+				{
+					pCurve = new CCurve;
+					pCurve->m_nPenNum = 1; //± 
+					CPoint pt1(0, i * 40+j);
+					CPoint pt2(25 * 40, i * 40+j);
+					pCurve->m_pointList->Add(pt1);
+					pCurve->m_pointList->Add(pt2);
+					m_CurveList.Add(pCurve);
+				}
+			}
+		}
 	}
-	for (i=0;i<100;i++)
+	else //IUT308
 	{
-		pCurve = new CCurve;
-		pCurve->m_nPenNum = 1; //± 
-		CPoint pt1(0,i*40),pt2(25*40,i*40);
-		pCurve->m_pointList->Add(pt1);
-		pCurve->m_pointList->Add(pt2);
-		m_CurveList.Add(pCurve);
+		for (i = 0; i<nSizeCurve; i++)
+		{
+			pCurve = (CCurve *)m_CurveList.GetAt(i);
+			pCurve->OnMoveCurveTo( (int)(-50.8 * 40), 0); //Õº–Œ”““∆5.08cm
+		}
+		for (i = 0; i<100; i++)
+		{
+			if (i % 25 == 0)
+			{
+				for (j = 0; j < 10; j++)
+				{
+					pCurve = new CCurve;
+					pCurve->m_nPenNum = 1; //± 
+					CPoint pt1(0, i * 40+j);
+					CPoint pt2((int)(50.8 * 40), i * 40 + j);
+					pCurve->m_pointList->Add(pt1);
+					pCurve->m_pointList->Add(pt2);
+					m_CurveList.Add(pCurve);
+				}
+			}
+		}
 	}
 }
 
@@ -439,7 +473,7 @@ void COnePage::DrawOnePage(CDC *pDC)
 	{
 		CCurve *pCurve = (CCurve *)m_CurveList.GetAt(i);
 		pCurve->DrawCurve(pDC);
-		if( (gMacSet.getDisplaySequence()) && (pCurve->m_nPenNum > 1) )
+		if( (gSet.getDisplaySequence()) && (pCurve->m_nPenNum > 1) )
 		{
 			CPoint ptCenter;
 			ptCenter.x = (pCurve->m_nXmax+pCurve->m_nXmin)/2;

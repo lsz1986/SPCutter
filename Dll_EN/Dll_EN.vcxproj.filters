@@ -2,15 +2,15 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{1188d740-e222-400a-9f0d-1c8fd976f202}</UniqueIdentifier>
+      <UniqueIdentifier>{026ea22d-1aa3-4f28-800c-57b30a812cbc}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
     </Filter>
     <Filter Include="Header Files">
-      <UniqueIdentifier>{8b8c973f-ca0d-42ea-ba63-e2a27393f55a}</UniqueIdentifier>
+      <UniqueIdentifier>{dd180c76-3c22-4b4d-aeaa-10e55d2be3a4}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl</Extensions>
     </Filter>
     <Filter Include="Resource Files">
-      <UniqueIdentifier>{9b6b64c7-72cf-45ac-9c75-72466f6e0659}</UniqueIdentifier>
+      <UniqueIdentifier>{43da1ccc-64a1-46fe-b1c2-b0f9e066f412}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
   </ItemGroup>
@@ -31,27 +31,16 @@
     <ClInclude Include="StdAfx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="res\ALLICO.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\GMICO.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\SpCutter.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\SpCutterDoc.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\toolbar1.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Dll_EN.def">
       <Filter>Source Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="res\ALLICO.ico">
+      <Filter>Resource Files</Filter>
     </CustomBuild>
     <CustomBuild Include="res\fon_en.bin">
       <Filter>Resource Files</Filter>
@@ -59,5 +48,49 @@
     <CustomBuild Include="res\fon_hz.bin">
       <Filter>Resource Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="res\GMICO.ico">
+      <Filter>Resource Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="res\SpCutter.ico">
+      <Filter>Resource Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="res\SpCutterDoc.ico">
+      <Filter>Resource Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="res\toolbar1.bmp">
+      <Filter>Resource Files</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\IconDown.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconLeft.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconRight.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconUp.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconWorkStart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconSpClean.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconWorkPause.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconWorkCancel.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconZpSet.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconZpToDef.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

@@ -294,8 +294,7 @@ void CCurve::DrawCurve(CDC *pDC)
 	pDC->SelectObject(pPenOld);
 }
 
-#define KP_XXX	333
-#define KP_YYY	1560
+//#define KP_XXX	(333) 
 
 void CCurve::OnToCutData()
 {
@@ -303,8 +302,16 @@ void CCurve::OnToCutData()
 	ST_CNC_DATA_ALL *pCncData;
 	int iKpDistX,iKpDistY;
 
-	iKpDistX = (int)(gMacSet.getKPDistX()*0.1*gMacSet.getPPMMX()+KP_XXX);
-	iKpDistY = (int)(gMacSet.getKPDistY()*0.1*gMacSet.getPPMMY())+KP_YYY+(gMacSet.getSpAccStep()-5000);
+	if(gSet.getSpType() == 0) //HP45
+	{
+		iKpDistX = (int)( (gSet.getKPDistX()*0.1 + 28 )*gSet.getPPMMX() + KP_XXX);
+		iKpDistY = (int)((gSet.getKPDistY()*0.1 + gSet.getSpAccDistmm() )*gSet.getPPMMY() + KP_YYY);
+	}
+	else
+	{
+		iKpDistX = (int)((gSet.getKPDistX()*0.1 + 5)*gSet.getPPMMX() + KP_XXX);
+		iKpDistY = (int)((gSet.getKPDistY()*0.1 + gSet.getSpAccDistmm()+5)*gSet.getPPMMY() + KP_YYY);
+	}
 
 	nSizeCurve = m_pointList->GetSize();
 	if (nSizeCurve == 0)
@@ -314,15 +321,15 @@ void CCurve::OnToCutData()
 	for (i=0;i<nSizeCurve;i++)
 	{
 		pCncData = new ST_CNC_DATA_ALL;
-		pCncData->m_iX = (int)(m_pointList->GetAt(i).x*gMacSet.getPPMMX()/40.0*gMacSet.getPltScale()*10.0/gMacSet.get10000X())+iKpDistX;
-		pCncData->m_iY = (int)(m_pointList->GetAt(i).y*gMacSet.getPPMMY()/40.0*gMacSet.getPltScale()*10.0/gMacSet.get10000Y())+iKpDistY;
+		pCncData->m_iX = (int)(m_pointList->GetAt(i).x*gSet.getPPMMX()/40.0*gSet.getPltScale()*10.0/gSet.get10000X())+iKpDistX;
+		pCncData->m_iY = (int)(m_pointList->GetAt(i).y*gSet.getPPMMY()/40.0*gSet.getPltScale()*10.0/gSet.get10000Y())+iKpDistY;
 		if (0 == i)
 		{
-			pCncData->m_nCmdType = TYPE_MOVE;
+			pCncData->m_cCmdType = TYPE_MOVE;
 		}
 		else
 		{
-			pCncData->m_nCmdType = TYPE_CUT;
+			pCncData->m_cCmdType = TYPE_CUT;
 		}
 		g_ptrCncList.Add(pCncData);
 	}

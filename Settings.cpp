@@ -1,10 +1,10 @@
-// CSetMac.cpp: implementation of the CSettings class.
+// CSettings.cpp: implementation of the CSettings class.
 //
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "SpCutter.h"
-#include "MacSet.h"
+#include "Settings.h"
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -17,25 +17,35 @@ static char THIS_FILE[]=__FILE__;
 //////////////////////////////////////////////////////////////////////
 BOOL FreeResFile(DWORD dwResID, LPCTSTR lpszResType, LPCTSTR lpszFilePathName);
 
-CSetMac::CSetMac()
+CSettings::CSettings()
 {
-	m_bJobAutoStart = FALSE;
 	m_bWorkStartPause = FALSE;
 	m_bMachineLocked = FALSE;
+	m_bAppExitFlag = FALSE;
+	m_bParaUpdateFlag = FALSE;
+	m_nToolBarState = TBS_SEL;
 
-	m_dPPMMX = 104.1111150;
-	m_dPPMMY = 104.1111150;
+	m_nSp1DotLr = 23;
+	m_nSp2DotLr = 23;
+	m_nSpAccDistmm = 40;
+
+	m_nCutSecLen = 75;
+	m_nMacSizeX = 1200;
+	m_nMacSizeY = 900;
+
+	m_dPPMMX = 104.16;
+	m_dPPMMY = 104.16;
 
 	m_nLineWidth = 1; //线宽
 	m_nSpEX = 0; //喷头重叠
 	m_nSp12EY = 150; //喷头间距
 
-	m_nSpDDY = 0; //双向误差
+	m_nSpDDY = 5; //双向误差
 
 	m_nJobEndHeadPos = 0;
 
-	m_nKPDistX = 0; //刀笔补偿
-	m_nKPDistY = 0;
+	m_nKPDistX = 50; //刀笔补偿
+	m_nKPDistY = 50;
 
 	m_n1000X = 10000; //比例调整
 	m_n1000Y = 10000; //比例调整
@@ -46,14 +56,15 @@ CSetMac::CSetMac()
 	m_nPwmKStart = 20; //启动刀压
 	m_nPwmKWork = 20; //工作刀压
 
-	m_nToolBarState = TBS_SEL;
+	m_nAngleAdjust = 100;
 }
 
-CSetMac::~CSetMac()
+CSettings::~CSettings()
 {
+
 }
 
-void CSetMac::getAppDir()
+void CSettings::getAppDir()
 {
     TCHAR szFullPath[_MAX_PATH];
     TCHAR szDir[_MAX_DIR];
@@ -77,7 +88,7 @@ void CSetMac::getAppDir()
 	FreeResFile(IDR_FON_HZ, "fon", m_strFonHz);
 }
 
-void CSetMac::checkDataDir()
+void CSettings::checkDataDir()
 {
 	CFileFind fFind;
 	CString strTempDataDir;
@@ -90,15 +101,15 @@ void CSetMac::checkDataDir()
 	{
 		m_strDataDir.Format( _tcsdup(m_strAppDir + "plot\\") );
 	}
-	
+
 	strTempDataDir = m_strDataDir;
 	if (strTempDataDir.GetAt(strTempDataDir.GetLength()-1) == '\\') //检测目录存在需要去掉
 	{
 		strTempDataDir.SetAt(strTempDataDir.GetLength()-1, 0);
 	}
 
-	if( ( m_strDataDir.GetLength() < 3 )  // 目录不合法 
-		|| (FALSE == fFind.FindFile(strTempDataDir)) //目录不存在 
+	if( ( m_strDataDir.GetLength() < 3 )  // 目录不合法
+		|| (FALSE == fFind.FindFile(strTempDataDir)) //目录不存在
 		|| m_strDataDir == m_strAppDir) //目录与当前程序目录相同
 	{
 		m_strDataDir.Format( _tcsdup(m_strAppDir + "plot\\") );
@@ -148,4 +159,3 @@ BOOL FreeResFile(DWORD dwResID, LPCTSTR lpszResType, LPCTSTR lpszFilePathName)
 	
     return (dwResSize == dwWritten); //若写入大小等于文件大小，返回成功，否则失败  
 }
-

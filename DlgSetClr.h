@@ -27,7 +27,6 @@ public:
 	CButtonClr	m_btnBlade;
 	BOOL	m_bDisplayDirection;
 	BOOL	m_bDisplaySequence;
-	BOOL	m_bListDispLeft;
 	UINT	m_nDispSizeX;
 	UINT	m_nDispSizeY;
 	//}}AFX_DATA

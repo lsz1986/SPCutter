@@ -1,54 +1,63 @@
 #include "StdAfx.h"
-#include "Global.h"
+#include "Thread.h"
 
 CWinThread* gThreadAutoConnect;
-ST_THREAD_PARA gParaAutoConnect;
-
 CWinThread* gThrdWork;
-ST_THREAD_PARA gParaWork;
+CWnd* g_pMainfrm;
+
+int gCarCurPosX;
+int gCarCurPosY;
 
 UINT ThreadAutoConnect(LPVOID pParam) //自动连接机器并开始服务
 {
-	CWnd *pParent;
-	pParent = (CWnd *) ((ST_THREAD_PARA *)pParam)->m_pWnd;
-	static int kk=0;
-	while(1)
+	static int kk = 0;
+	u8 sbuf[64];
+	u8 rbuf[64];
+	while (1)
 	{
-		if(gMacSet.getQueryEnable()) //允许查询
+		Sleep(100);
+		if (gSet.getAppExitFlag()) //程序关闭前先关闭线程
 		{
-			if (!g_bParaRead)
+			gThreadAutoConnect = NULL;
+			return 0;
+		}
+		if (gSet.getQueryEnable()) //允许查询
+		{
+			if (FALSE == g_bParaRead)
 			{
 				ReadMacPara(); //定时检测，未读取则读取一次参数
+				continue;
 			}
-			if (gUSB.OnGetMacState() != 0 )
+			if (gCommu.OnCmd0(CMD0_GET_STAT) != 0)
 			{
 				kk++;
-				if (kk > 4)
+				if (kk >= 3)
 				{
 					kk = 0;
 					g_bParaRead = FALSE;
+					gSysState = 0xff;
 				}
 			}
 			else
 			{
 				kk = 0;
 			}
-			pParent->SendMessage(USER_DISP_STAT,0,0);
-
-			if(gMacSet.getJobAutoStart()==TRUE) //自动开始工作
+			if ((NULL == gThrdWork) && (READY == (gSysState & 0x0f)))
 			{
-				if( (NULL == gThrdWork) && (READY == gSysState) )
-				{
-					pParent->SendMessage(USER_AUTO_START,0,0);
-				}
- 			}
-
+				g_pMainfrm->SendMessage(USER_AUTO_START, 0, 0);
+			}
 		}
-		if(gMacSet.getJobAutoStart()==TRUE) //自动开始工作
+
+		g_pMainfrm->SendMessage(USER_SEARCH_PLT, 0, 0);
+
+		Sleep(100);
+		if ((gSysState & 0x0f) == READY)
 		{
-			pParent->SendMessage(USER_SEARCH_PLT,0,0);
+			sbuf[0] = 8;
+			gCommu.OnCmd1(CMD1_GET_CAR_POS, 1, sbuf, 8, rbuf);
+			gCarCurPosX = *(int*)(&rbuf[0]);
+			gCarCurPosY = *(int*)(&rbuf[4]);
+			Sleep(10);
 		}
-		Sleep(400);
-	}		
+	}
 }
-

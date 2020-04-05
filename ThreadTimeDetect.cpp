@@ -2,7 +2,6 @@
 #include "Global.h"
 
 CWinThread* gThreadTimeDetect;
-ST_THREAD_PARA gParaTimeDetect;
 
 UINT ThreadTimeDetect(LPVOID pParam)
 {
@@ -21,7 +20,7 @@ UINT ThreadTimeDetect(LPVOID pParam)
 			ctimeNew = CTime::GetCurrentTime();	
 			if( (ctimeNew - ctimeOld) < 1) 
 			{
-				gMacSet.setMachineLocked(TRUE);
+				gSet.setMachineLocked(TRUE);
 				if (gDispSet.getLanguage() == 0)
 				{
 					AfxMessageBox("系统时间设置错误！");

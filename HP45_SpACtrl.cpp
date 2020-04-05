@@ -5,7 +5,6 @@
 	Type = 0  喘0野割
 	Type = 1  喘島朝方象野割
 */
-
 void HP45_getSpAOneLineData(char Type)
 {
 	if (0==Type)

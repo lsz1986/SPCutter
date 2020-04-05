@@ -10,7 +10,6 @@
 #include "HpglFile.h"
 #include "DlgSetDir.h"
 
-#include "DLgManCtrl.h"
 
 UINT ThreadTimeDetect(LPVOID pParam);
 UINT ThreadAutoConnect(LPVOID pParam); //自动连接机器并开始服务
@@ -38,18 +37,10 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 	ON_COMMAND(IDCB_PLT_ADD, OnPltAdd)
 	ON_COMMAND(IDCB_PLT_SAVE, OnPltSave)
 	ON_COMMAND(IDCB_PARA_SET, OnParaSet)
-	ON_COMMAND(IDCB_MANUAL_CTRL, OnManualCtrl)
 	ON_WM_CLOSE()
-	ON_COMMAND(IDCB_SP_CLEAN, OnSpClean)
 	ON_COMMAND(IDM_AUTH_INFO, OnAuthInfo)
 	ON_COMMAND(IDM_SUPER_USER, OnSuperUser)
-	ON_COMMAND(IDCB_ZOOM_IN, OnZoomIn)
-	ON_COMMAND(IDCB_ZOOM_OUT, OnZoomOut)
 	ON_COMMAND(IDCB_ZOOM_ALL, OnZoomAll)
-	ON_COMMAND(IDCB_V_SEL, OnVSel)
-	ON_COMMAND(IDCB_V_MOVE, OnVMove)
-	ON_UPDATE_COMMAND_UI(IDCB_V_MOVE, OnUpdateVMove)
-	ON_UPDATE_COMMAND_UI(IDCB_V_SEL, OnUpdateVSel)
 	ON_COMMAND(ID_FILE_ATF_10x10, OnFILEATF10x10)
 	ON_COMMAND(ID_FILE_ATF_20x20, OnFILEATF20x20)
 	ON_COMMAND(ID_FILE_ATF_30x30, OnFILEATF30x30)
@@ -58,28 +49,25 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 	ON_COMMAND(IDCB_WORK_START, OnWorkStart)
 	ON_COMMAND(IDCB_WORK_PAUSE, OnWorkPause)
 	ON_COMMAND(IDCB_WORK_CANCEL, OnWorkCancel)
-	ON_UPDATE_COMMAND_UI(IDCB_WORK_PAUSE, OnUpdateWorkPause)
-	ON_UPDATE_COMMAND_UI(IDCB_WORK_START, OnUpdateWorkStart)
-	ON_UPDATE_COMMAND_UI(IDCB_WORK_CANCEL, OnUpdateWorkCancel)
-	ON_UPDATE_COMMAND_UI(IDCB_MANUAL_CTRL, OnUpdateManualCtrl)
-	ON_UPDATE_COMMAND_UI(IDCB_SP_CLEAN, OnUpdateSpClean)
 	ON_COMMAND(IDM_LAN_CHS, OnLanChs)
 	ON_COMMAND(IDM_LAN_EN, OnLanEn)
 	ON_MESSAGE(USER_END_WTHREAD, OnEndWorkThread)
-	ON_MESSAGE(USER_DISP_STAT, OnDispSysStatus)
 	ON_MESSAGE(USER_SEARCH_PLT, OnSearchNewPltFile)
 	ON_MESSAGE(USER_AUTO_START, OnAutoStartWork)
 	ON_UPDATE_COMMAND_UI(IDM_LAN_CHS, OnUpdateLanChs)
 	ON_UPDATE_COMMAND_UI(IDM_LAN_EN, OnUpdateLanEn)
 	//}}AFX_MSG_MAP
-	ON_UPDATE_COMMAND_UI(IDS_SYS_STATE,OnUpdateCmdUISysState)
+	ON_COMMAND(IDCB_DLG_BAR, &CMainFrame::OnIdcbDlgBar)
+	ON_UPDATE_COMMAND_UI(IDCB_DLG_BAR, &CMainFrame::OnUpdateIdcbDlgBar)
+	ON_UPDATE_COMMAND_UI(IDM_CONNECT_VIA_ETH, &CMainFrame::OnUpdateConnectViaEth)
+	ON_UPDATE_COMMAND_UI(IDM_CONNECT_VIA_USB, &CMainFrame::OnUpdateConnectViaUsb)
+	ON_COMMAND(IDM_CONNECT_VIA_ETH, &CMainFrame::OnConnectViaEth)
+	ON_COMMAND(IDM_CONNECT_VIA_USB, &CMainFrame::OnConnectViaUsb)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
 {
 	ID_SEPARATOR,           // status line indicator
-	IDS_SYS_STATE,
-	IDS_PROGRESS
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -87,6 +75,8 @@ static UINT indicators[] =
 
 CMainFrame::CMainFrame()
 {
+	g_pMainfrm = this;
+	m_bShowDlgBar = TRUE;
 }
 
 CMainFrame::~CMainFrame()
@@ -100,7 +90,7 @@ CSpCutterDoc* CMainFrame::GetDocument()
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
-	::SetProp(m_hWnd,"YHZ_SP_Cutter",HANDLE(1));
+	::SetProp(m_hWnd,"SPCutterV7",HANDLE(1));
 
 	if (CFrameWnd::OnCreate(lpCreateStruct) == -1)
 		return -1;
@@ -120,17 +110,15 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		return -1;      // fail to create
 	}
 	if (!m_wndDlgBar.Create(this,IDDLG_BAR,WS_VISIBLE|WS_CHILD
-		|CBRS_SIZE_DYNAMIC|CBRS_BOTTOM,IDDLG_BAR))
+		|CBRS_SIZE_DYNAMIC|CBRS_RIGHT,IDDLG_BAR))
 	{
 		TRACE0("Failed to create CDataStatus bar!");
 		return -1;
 	}
 
-	gParaTimeDetect.m_pWnd = this;
-	gParaAutoConnect.m_pWnd = this;
-	gThreadTimeDetect = AfxBeginThread(ThreadTimeDetect,&gParaTimeDetect);
-	gThreadAutoConnect = AfxBeginThread(ThreadAutoConnect,&gParaAutoConnect);
-	gMacSet.setQueryEnable(TRUE);
+	gThreadTimeDetect = AfxBeginThread(ThreadTimeDetect, NULL);
+	gThreadAutoConnect = AfxBeginThread(ThreadAutoConnect, NULL);
+	gSet.setQueryEnable(TRUE);
 
 	gThrdWork = NULL;
 	return 0;
@@ -168,25 +156,6 @@ void CMainFrame::Dump(CDumpContext& dc) const
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame message handlers
 
-void CMainFrame::OnPaint()
-{
-	CPaintDC dc(this); // device context for painting
-
-	CRect rect;
-	int nIndex;
-
-	nIndex= m_wndStatusBar.CommandToIndex(IDS_PROGRESS);
-	m_wndStatusBar.SetPaneInfo(nIndex,IDS_PROGRESS,SBPS_NORMAL,600);
-	m_wndStatusBar.GetItemRect(nIndex,&rect);
-	
-	if(!m_wndProgress.m_hWnd)
-	{
-		m_wndProgress.Create(WS_CHILD | WS_VISIBLE | PBS_SMOOTH, rect,&m_wndStatusBar,123);
-	}
-	else
-		m_wndProgress.MoveWindow(rect);
-}
-
 LRESULT CMainFrame::OnEndWorkThread(WPARAM wParam, LPARAM lParam)
 {
 	GetDocument()->OnRemoveOnePageData(0);
@@ -197,14 +166,13 @@ LRESULT CMainFrame::OnEndWorkThread(WPARAM wParam, LPARAM lParam)
 	m_pListView->UpdateList();
 	m_pMainView->SetCurrentDrawPage(0);
 	m_pMainView->OnReDraw();
-	gMacSet.setQueryEnable(TRUE);
+	gSet.setQueryEnable(TRUE);
 
-	if( (GetDocument()->m_ArrayPage.GetSize() > 0)&& (gMacSet.getJobAutoStart()) )
+	if( (GetDocument()->m_ArrayPage.GetSize() > 0)&& (gSet.getJobAutoStart()) )
 	{
-		gMacSet.setWorkStartPause(TRUE);
+		gSet.setWorkStartPause(TRUE);
 	}
 	gThrdWork = NULL;	
-	OnDispSysStatus(NULL,NULL);
 	return true;
 }
 
@@ -213,150 +181,6 @@ BOOL CMainFrame::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO*
 	if (m_wndDlgBar.OnCmdMsg(nID,nCode,pExtra,pHandlerInfo))
 		return TRUE;
 	return CFrameWnd::OnCmdMsg(nID, nCode, pExtra, pHandlerInfo);
-}
-
-LRESULT CMainFrame::OnDispSysStatus(WPARAM wParam, LPARAM lParam)
-{
-	CString strText;
-	int nIndex;
-	CSize sizeText;
-	CWindowDC dc(&m_wndStatusBar);
-	if (g_bParaRead)
-	{
-		switch(gSysState)
-		{
-			case SYS_INIT:
-			if (gDispSet.getLanguage() == 0){
-				strText.Format("系统正在初始化...");
-			}else{
-				strText.Format("Rebooting...");
-			}
-			break;
-
-			case CHECK_SRAM:
-			if (gDispSet.getLanguage() == 0){
-			strText.Format("内存检查...");
-			}else{
-				strText.Format("Testing Memory...");
-			}
-			break;
-
-			case SEEK_ZP:
-			if (gDispSet.getLanguage() == 0){
-				strText.Format("正在寻找原点...");
-			}else{
-				strText.Format("Finding ZP...");
-			}
-			break;
-
-			case READY:
-			m_wndProgress.SetPos(0);
-			if (gDispSet.getLanguage() == 0){
-				strText.Format("准备就绪");
-			}else{
-				strText.Format("Ready");
-			}
-			break;
-
-			case WORKING:
-			switch(gWorkType)
-			{
-				case WT_NONE:
-				strText.Format("Waiting");
-				break;
-
-				case WT_START:
-				break;
-
-				case WT_END:
-				if (gDispSet.getLanguage() == 0){
-					strText.Format("任务完成中...");
-				}else {
-					strText.Format("Ending...");
-				}
-				break;
-
-				case WT_CANCEL:
-				if (gDispSet.getLanguage() == 0){
-					strText.Format("任务删除中....");
-				}else{
-					strText.Format("Cancel....");
-				}
-				break;
-
-				case WT_PLOTTING:
-				if (gDispSet.getLanguage() == 0){
-					strText.Format("正在绘图%d/%d",wParam,lParam);
-				}else{
-					strText.Format("Plotting%d/%d",wParam,lParam);
-				}
-				if (lParam != 0)
-				{
-					m_wndProgress.SetPos(wParam*100/lParam);
-				}
-				break;
-
-				case WT_CUTTING:
-				m_wndProgress.SetPos(0);
-				if (gDispSet.getLanguage() == 0){
-					strText.Format("正在切割");
-				}else{
-					strText.Format("Cutting");
-				}
-				break;
-			}
-			break;
-
-			case WORK_PAUSE:
-			if (gDispSet.getLanguage() == 0){
-			strText.Format("暂停工作");
-			}else{
-				strText.Format("Pause");
-			}
-			break;
-
-			case PRT_TEST:
-			if (gDispSet.getLanguage() == 0){
-				strText.Format("正在清洗喷头...");
-			}else{
-				strText.Format("Clean spray...");
-			}
-			break;
-
-			case ERROR_SRAM:
-			strText.Format("RAM ERROR");
-			break;
-
-			case STEPM_LOST:
-			if (gDispSet.getLanguage() == 0){
-				strText.Format("电机丢步，可能卡纸");
-			}else{
-				strText.Format("Step motor out of pace,maybe jammed");
-			}
-			break;
-
-			default:
-			m_wndProgress.SetPos(0);
-			strText.Format("Error %d",gSysState);
-			break;
-		}
-	}
-	else
-	{
-		m_wndProgress.SetPos(0);
-		if (gDispSet.getLanguage() == 0)
-		{
-			strText.Format("USB未连接");
-		}else {
-			strText.Format("USB Not Connected");
-		}
-	}
-
-	nIndex= m_wndStatusBar.CommandToIndex(IDS_SYS_STATE);
-	m_wndStatusBar.SetPaneText(nIndex,strText);
-	sizeText = dc.GetTextExtent(strText);
-	m_wndStatusBar.SetPaneInfo(nIndex,IDS_SYS_STATE,SBPS_NORMAL,sizeText.cx);
-	return 0;
 }
 
 LRESULT CMainFrame::onShowTask(WPARAM wParam,LPARAM lParam) 
@@ -383,70 +207,35 @@ LRESULT CMainFrame::onShowTask(WPARAM wParam,LPARAM lParam)
 	return 0; 
 }
 
-void CMainFrame::OnUpdateCmdUISysState(CCmdUI* pCmdUI)
-{
-	pCmdUI->Enable();
-}
-
 BOOL CMainFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext) 
 {
 	CRect cr;
 	GetWindowRect( &cr );
 
-	if(gMacSet.getListDispLeft())
+	// Create the main splitter with 1 row and 2 columns
+	if ( !m_wndSplitter.CreateStatic( this, 2, 1 ) )
 	{
-		// Create the main splitter with 1 row and 2 columns
-		if ( !m_wndSplitter.CreateStatic( this, 1, 2 ) )
-		{
-			MessageBox( "Error setting up m_mainSplitter", "ERROR", MB_OK | MB_ICONERROR );
-			return FALSE;
-		}
-		
-		// The views for each pane must be created 
-		if ( !m_wndSplitter.CreateView( 0, 0, RUNTIME_CLASS(CMyListView),
-			CSize(cr.Width()/3, cr.Height()), pContext ) )
-		{
-			MessageBox( "Error setting up splitter view", "ERROR", MB_OK | MB_ICONERROR );
-			return FALSE;
-		}
-		
-		if ( !m_wndSplitter.CreateView( 0, 1, RUNTIME_CLASS(CSpCutterView),
-			CSize(cr.Width()*2/3, cr.Height()), pContext ) )
-		{
-			MessageBox( "Error setting up splitter view", "ERROR", MB_OK | MB_ICONERROR );
-			return FALSE;
-		}
-		m_pListView = (CMyListView*)m_wndSplitter.GetPane(0,0) ;
-		m_pMainView = (CSpCutterView*)m_wndSplitter.GetPane(0,1) ;
-		m_pListView->m_pMainView = m_pMainView;
+		MessageBox( "Error setting up m_mainSplitter", "ERROR", MB_OK | MB_ICONERROR );
+		return FALSE;
 	}
-	else
+		
+	// The views for each pane must be created 
+	if ( !m_wndSplitter.CreateView( 0, 0, RUNTIME_CLASS(CMyListView),
+		CSize(cr.Width(), 200), pContext ) )
 	{
-		// Create the main splitter with 1 row and 2 columns
-		if ( !m_wndSplitter.CreateStatic( this, 2, 1 ) )
-		{
-			MessageBox( "Error setting up m_mainSplitter", "ERROR", MB_OK | MB_ICONERROR );
-			return FALSE;
-		}
-		
-		// The views for each pane must be created 
-		if ( !m_wndSplitter.CreateView( 0, 0, RUNTIME_CLASS(CMyListView),
-			CSize(cr.Width(), 200), pContext ) )
-		{
-			MessageBox( "Error setting up splitter view", "ERROR", MB_OK | MB_ICONERROR );
-			return FALSE;
-		}
-		
-		if ( !m_wndSplitter.CreateView( 1, 0, RUNTIME_CLASS(CSpCutterView),
-			CSize(cr.Width(), cr.Height()-200), pContext ) )
-		{
-			MessageBox( "Error setting up splitter view", "ERROR", MB_OK | MB_ICONERROR );
-			return FALSE;
-		}
-		m_pListView = (CMyListView*)m_wndSplitter.GetPane(0,0) ;
-		m_pMainView = (CSpCutterView*)m_wndSplitter.GetPane(1,0) ;
-		m_pListView->m_pMainView = m_pMainView;
+		MessageBox( "Error setting up splitter view", "ERROR", MB_OK | MB_ICONERROR );
+		return FALSE;
 	}
+
+	if ( !m_wndSplitter.CreateView( 1, 0, RUNTIME_CLASS(CSpCutterView),
+		CSize(cr.Width(), cr.Height()-200), pContext ) )
+	{
+		MessageBox( "Error setting up splitter view", "ERROR", MB_OK | MB_ICONERROR );
+		return FALSE;
+	}
+	m_pListView = (CMyListView*)m_wndSplitter.GetPane(0,0) ;
+	m_pMainView = (CSpCutterView*)m_wndSplitter.GetPane(1,0) ;
+	m_pListView->m_pMainView = m_pMainView;
 	return TRUE;
 }
 
@@ -481,11 +270,11 @@ void CMainFrame::OnPltOpen()
 		
 		myHpglFile.HpglCmdToDoc(GetDocument());
 		GetDocument()->CheckDocData();
-		if (gMacSet.getPltPageLen() > 100)
+		if (gSet.getPltPageLen() > 100)
 		{
-			GetDocument()->SpliteLastPage(gMacSet.getPltPageLen()*40);//分页;
+			GetDocument()->SpliteLastPage(gSet.getPltPageLen()*40);//分页;
 		}
-		if (gMacSet.getAutoDelPlt())
+		if (gSet.getAutoDelPlt())
 		{
 			DeleteFile(strFileName);
 		}
@@ -514,11 +303,11 @@ void CMainFrame::OnPltAdd()
 		}
 		myHpglFile.HpglCmdToDoc(GetDocument());
 		GetDocument()->CheckDocData();
-		if (gMacSet.getPltPageLen() > 100)
+		if (gSet.getPltPageLen() > 100)
 		{
-			GetDocument()->SpliteLastPage(gMacSet.getPltPageLen()*40);//分页;
+			GetDocument()->SpliteLastPage(gSet.getPltPageLen()*40);//分页;
 		}
-		if (gMacSet.getAutoDelPlt())
+		if (gSet.getAutoDelPlt())
 		{
 			DeleteFile(strFileName);
 		}
@@ -564,14 +353,6 @@ void CMainFrame::OnPltSave()
 void CMainFrame::OnParaSet() 
 {
 	CDlgMacPara dlg;
-	if(gThrdWork != NULL)
-	{
-		AfxMessageBox("正在工作，不能设置参数");
-		return;
-	}
-	gMacSet.setQueryEnable(FALSE);
-	ReadMacPara(); //进入参数设置界面之前读取
-	gMacSet.setQueryEnable(TRUE);
 	if (FALSE == g_bParaRead)
 	{
 		if (gDispSet.getLanguage() == 0)
@@ -583,33 +364,12 @@ void CMainFrame::OnParaSet()
 			AfxMessageBox("Read Parameter Failed!");
 		}
 	}
-	gMacSet.setQueryEnable(FALSE);
+	gSet.setQueryEnable(FALSE);
 	dlg.DoModal();
-	gMacSet.setQueryEnable(TRUE);
+	gSet.setQueryEnable(TRUE);
 	Invalidate();
 }
 
-
-void CMainFrame::OnUpdateManualCtrl(CCmdUI* pCmdUI) 
-{
-	if( gSysState == READY)
-	{
-		pCmdUI->Enable(TRUE);
-	}
-	else
-	{
-		pCmdUI->Enable(FALSE);
-	}
-}
-
-void CMainFrame::OnManualCtrl() 
-{
-	gMacSet.setQueryEnable(FALSE);
-	CDlgManCtrl dlg;
-	dlg.DoModal();
-	gMacSet.setQueryEnable(TRUE);
-	return;
-}
 
 void CMainFrame::OnZoomAll() 
 {
@@ -658,94 +418,84 @@ void CMainFrame::OnClose()
 	CFrameWnd::OnClose();
 }
 
-void CMainFrame::OnUpdateSpClean(CCmdUI* pCmdUI) 
-{
-	if( gSysState == READY)
-	{
-		pCmdUI->Enable(TRUE);
-	}
-	else
-	{
-		pCmdUI->Enable(FALSE);
-	}	
-}
-
-void CMainFrame::OnSpClean() 
-{
-	gMacSet.setQueryEnable(FALSE);
-	if (0 != gUSB.OnSpClean())
-	{
-		if (gDispSet.getLanguage() == 0)
-		{
-			AfxMessageBox("发送命令失败");
-		}
-		else
-		{
-			AfxMessageBox("Send Command Failed");
-		}
-	}
-	gMacSet.setQueryEnable(TRUE);
-	return;
-}
-
 #include "DlgRegInfo.h"
 void CMainFrame::OnAuthInfo() 
 {
-	if( (gThrdWork != NULL)|| (READY != gSysState) )
-	{
-		if (gDispSet.getLanguage() == 0){
-			AfxMessageBox("操作失败");
-		}else{
-			AfxMessageBox("Connect Machine First");
-		}
-		return;
-	}
+	u8 sbuf[64];
+	u8 rbuf[64];
 
-	gMacSet.setQueryEnable(FALSE);
-	u32 McuCode = gUSB.OnGetChipID(); //进入授权更新界面时
-	if (McuCode > 0x70000000)
+ 	if( (gThrdWork != NULL)|| (READY != (gSysState&0x0f)) )
+ 	{
+ 		if (gDispSet.getLanguage() == 0){
+ 			AfxMessageBox("操作失败");
+ 		}else{
+ 			AfxMessageBox("Connect Machine First");
+ 		}
+ 		return;
+ 	}
+ 
+ 	gSet.setQueryEnable(FALSE);
+
+	sbuf[0] = 1;
+	int rev = gCommu.OnCmd1(CMD1_GET_MCU_ID, 1, sbuf, 4, rbuf);
+	if (rev == 0)
 	{
-		gMacSet.setMcuCode(McuCode);
-		CString str;
-		str.Format("%x",McuCode ^ YHZIntArray[11]);
-		gMacSet.setMcuSn(str);
-		CDlgRegInfo dlg;
-		dlg.DoModal();
+		u32 McuCode = *((u32*)(&(rbuf[0])));
+		if (McuCode > 0x70000000)
+		{
+			gSet.setMcuCode(McuCode);
+			CString str;
+			str.Format("%x", McuCode ^ YHZIntArray[11]);
+			gSet.setMcuSn(str);
+			CDlgRegInfo dlg;
+			dlg.DoModal();
+		}
+		else
+		{
+			AfxMessageBox("联机失败!");
+		}
 	}
 	else
 	{
 		AfxMessageBox("联机失败!");
 	}
-	gMacSet.setQueryEnable(TRUE);
+	gSet.setQueryEnable(TRUE);
 	return;
 }
 
 #include "DlgSuperUser.h"
 void CMainFrame::OnSuperUser() 
 {
-	if(gThrdWork != NULL)
-	{
-		if (gDispSet.getLanguage() == 0){
-			AfxMessageBox("操作失败");
-		}else{
-			AfxMessageBox("Connect Machine First");
-		}
-		return;
-	}
-	
-	gMacSet.setQueryEnable(FALSE);
-	u32 McuCode = gUSB.OnGetChipID();
-	if (McuCode > 0x70000000)
-	{
-		gMacSet.setMcuCode(McuCode);
-		CDlgSuperUser dlg;
-		dlg.DoModal();
-	}
-	else
-	{
-		AfxMessageBox("联机失败!");
-	}
-	gMacSet.setQueryEnable(TRUE);
+	u8 sbuf[64];
+	u8 rbuf[64];
+ 	if(gThrdWork != NULL)
+ 	{
+ 		if (gDispSet.getLanguage() == 0)
+		{
+ 			AfxMessageBox("操作失败");
+ 		}
+		else
+		{
+ 			AfxMessageBox("Connect Machine First");
+ 		}
+ 		return;
+ 	}
+ 	
+ 	gSet.setQueryEnable(FALSE);
+	sbuf[0] = 1;
+	int rev = gCommu.OnCmd1(CMD1_GET_MCU_ID, 1, sbuf, 4, rbuf);
+	u32 McuCode = *( (u32*)(&(rbuf[0]) ) );
+	if( (rev == 0) && (McuCode > 0x70000000) )
+ 	{
+ 		gSet.setMcuCode(McuCode);
+ 		CDlgSuperUser dlg;
+ 		dlg.DoModal();
+ 	}
+ 	else
+ 	{
+ 		AfxMessageBox("联机失败!");
+ 	}
+ 	gSet.setQueryEnable(TRUE);
 }
 
 afx_msg LRESULT CMainFrame::OnSearchNewPltFile(WPARAM wParam,LPARAM lParam)
@@ -753,7 +503,7 @@ afx_msg LRESULT CMainFrame::OnSearchNewPltFile(WPARAM wParam,LPARAM lParam)
 	CFileFind filefind;
 	BOOL bFindFile;
 	CString strPathName;
-	bFindFile = filefind.FindFile(gMacSet.m_strDataDir+"*.*");
+	bFindFile = filefind.FindFile(gSet.m_strDataDir+"*.*");
 	
 	CString str;
 	while(bFindFile == TRUE)
@@ -787,9 +537,9 @@ void CMainFrame::OnPltAddAuto(CString strFileName,BOOL bDeleteFile)
 
 	myHpglFile.HpglCmdToDoc(GetDocument());
 	GetDocument()->CheckDocData();
-	if (gMacSet.getPltPageLen() > 100)
+	if (gSet.getPltPageLen() > 100)
 	{
-		GetDocument()->SpliteLastPage(gMacSet.getPltPageLen()*40);//分页;
+		GetDocument()->SpliteLastPage(gSet.getPltPageLen()*40);//分页;
 	}
 	if (bDeleteFile)
 	{
@@ -813,19 +563,19 @@ void CMainFrame::OnZoomOut()
 
 void CMainFrame::OnVSel() 
 {
-	gMacSet.setToolBarState(TBS_SEL);
+	gSet.setToolBarState(TBS_SEL);
 	m_pMainView->OnSetViewCursor();
 }
 
 void CMainFrame::OnVMove() 
 {
-	gMacSet.setToolBarState(TBS_MOVE);	
+	gSet.setToolBarState(TBS_MOVE);	
 	m_pMainView->OnSetViewCursor();
 }
 
 void CMainFrame::OnUpdateVMove(CCmdUI* pCmdUI) 
 {
-	if (gMacSet.getToolBarState() == TBS_MOVE)
+	if (gSet.getToolBarState() == TBS_MOVE)
 	{
 		pCmdUI->SetCheck(1);
 	}
@@ -837,7 +587,7 @@ void CMainFrame::OnUpdateVMove(CCmdUI* pCmdUI)
 
 void CMainFrame::OnUpdateVSel(CCmdUI* pCmdUI) 
 {
-	if (gMacSet.getToolBarState() == TBS_SEL)
+	if (gSet.getToolBarState() == TBS_SEL)
 	{
 		pCmdUI->SetCheck(1);
 	}
@@ -852,10 +602,13 @@ afx_msg LRESULT CMainFrame::OnAutoStartWork(WPARAM wParam,LPARAM lParam)
 	int rev;
 	if(NULL != gThrdWork)
 		return 0;
+	if (gSet.getJobAutoStart() == FALSE)
+		return 0;
+
 	rev = OnStartProcess();
 	if ( rev != 0)
 	{
-		gMacSet.setQueryEnable(TRUE);
+		gSet.setQueryEnable(TRUE);
 	}
 	return 0;
 }
@@ -863,14 +616,16 @@ afx_msg LRESULT CMainFrame::OnAutoStartWork(WPARAM wParam,LPARAM lParam)
 int CMainFrame::OnStartProcess()
 {
 	int rev;
+	u8 sbuf[64];
+	u8 rbuf[64];
 	CString strTemp;
 #if (YHZ_DEBUG == 0)
-	if( (FALSE == g_bParaRead) || (READY != gSysState) )
+	if( (FALSE == g_bParaRead) || (READY != (gSysState & 0x0f)) )
 		return -1;
 #endif
 	if (GetDocument()->m_ArrayPage.GetSize() <= 0)
 		return -1;
-	gMacSet.setThreadMessage(THREAD_MESSAGE_NONE);
+	gSet.setThreadMessage(THREAD_MESSAGE_NONE);
 
 	COnePage* pPage = GetDocument()->m_ArrayPage.GetAt(0);
 	gWorkingPage.OnRemoveAllData();
@@ -885,15 +640,15 @@ int CMainFrame::OnStartProcess()
 		return -1;
 	}
 
-	if (gMacSet.getYBlankMm() > 0)
+	if (gSet.getYBlankMm() > 0)
 	{
-		gWorkingPage.OnAddYMargin(gMacSet.getYBlankMm()*40);
+		gWorkingPage.OnAddYMargin(gSet.getYBlankMm()*40);
 	}
-	if (gMacSet.getSpAutoClean()) //开始工作前自动清洗喷头功能开启
+	if (gSet.getSpAutoClean()) //开始工作前自动清洗喷头功能开启
 	{
 		gWorkingPage.OnAddSpCleanData();
 	}
-	if (gMacSet.getOnlyPlot())
+	if (gSet.getOnlyPlot())
 	{
 		gWorkingPage.OnSetOnlyPlot();
 	}
@@ -903,16 +658,82 @@ int CMainFrame::OnStartProcess()
 	gWorkingPage.OnGetPageMaxMin(); //计算当前页的最小，最大值
 	gWorkingPage.OnGetSizePlotCut(); //分别获取切割和绘图数据的最大坐标
 
+	sbuf[0] = 1;
+	gCommu.OnCmd1(CMD1_GET_ZP_POS, 1, sbuf, 8, rbuf);
+	int iZpX = *( (int*)(&rbuf[0]) );
+	int iZpY = *((int*)(&rbuf[4]));
+	int iKpDistX, iKpDistY;
+
+	if (gSet.getSpType() == 0) //HP45
+	{
+		iKpDistX = (int)((gSet.getKPDistX()*0.1 + 28)*gSet.getPPMMX() + KP_XXX);
+		iKpDistY = (int)((gSet.getKPDistY()*0.1 + gSet.getSpAccDistmm())*gSet.getPPMMY() + KP_YYY);
+	}
+	else
+	{
+		iKpDistX = (int)((gSet.getKPDistX()*0.1 + 5)*gSet.getPPMMX() + KP_XXX);
+		iKpDistY = (int)((gSet.getKPDistY()*0.1 + gSet.getSpAccDistmm()+5)*gSet.getPPMMY() + KP_YYY);
+	}
+
+	double dMaxPP_X = (gSet.getMacSizeX())*gSet.getPPMMX();
+	double dMaxPP_Y = gSet.getMacSizeY()*gSet.getPPMMY();
+
+	double dPlotMaxPP_X;
+	if (gSet.getSpType() == 0) //HP45
+	{
+		dPlotMaxPP_X = iZpX + (gWorkingPage.m_nPlotXMax / 40.0+25)*gSet.getPPMMX();
+	}
+	else
+	{
+		dPlotMaxPP_X = iZpX + (gWorkingPage.m_nPlotXMax / 40.0+50)*gSet.getPPMMX();
+	}
+
+	double dPlotMaxPP_Y = iZpY + (gWorkingPage.m_nPlotYMax / 40.0 + gSet.getSpAccDistmm() )*gSet.getPPMMY();
+
+	double dCutMaxPP_X = iZpX + (gWorkingPage.m_nCutXMax / 40.0)*gSet.getPPMMX() + iKpDistX;
+	double dCutMaxPP_Y = iZpY + (gWorkingPage.m_nCutYMax / 40.0)*gSet.getPPMMY() + iKpDistY;
+	int rrr = 0;
+	if (dPlotMaxPP_X > dMaxPP_X)
+	{
+		rrr = 1;
+	}
+	else if (dPlotMaxPP_Y > dMaxPP_Y)
+	{
+		rrr = 2;
+	}
+	else if (dCutMaxPP_X > dMaxPP_X)
+	{
+		rrr = 3;
+	}
+	else if (dCutMaxPP_Y > dMaxPP_Y)
+	{
+		rrr = 4;
+	}
+	if(rrr != 0 )
+	{
+		CString strTemp;
+
+		if (gDispSet.getLanguage() == 0)
+		{
+			strTemp.Format("超出幅面（类型%d），请重设原点或重新排料后输出！\n提示：\n类型1-X向喷墨超限\n类型2-Y向喷墨超限\n类型3-X向切割超限\n类型4-Y向切割超限)",rrr);
+		}
+		else
+		{
+			strTemp.Format("Out of Size-%d!:(1(PlotXSize),(2(PlotYSize),(3(CutXSize),(4(CutYSize))！", rrr);
+		}
+		AfxMessageBox(strTemp);
+		return -1;
+	}
 
 	rev = CreateCncList();
 	if (0 != rev)
 	{
-		AfxMessageBox("切割数据太大,发送失败");
+		AfxMessageBox("切割数据缓冲失败,原因:数据太大");
 		return -1;
 	}
 
-	gMacSet.setQueryEnable(FALSE);
-	rev = gMyReg.OnCheckRegCode(gMacSet.getAuthCode());
+	gSet.setQueryEnable(FALSE);
+	rev = gMyReg.OnCheckRegCode(gSet.getAuthCode());
 	if( 0 != rev )
 	{
 		gWorkingPage.OnRemoveAllData();
@@ -932,58 +753,20 @@ int CMainFrame::OnStartProcess()
 		}
 		return -1;
 	}
-	gParaWork.m_pWnd = this;
+
 	if(NULL == gThrdWork) //没有绘图线程和切割线程在运行
 	{
-		gThrdWork = AfxBeginThread(ThreadWork,&gParaWork);
+		gThrdWork = AfxBeginThread(ThreadWork,NULL);
 		return 0;
 	}
 	return -1;
-}
-
-int CMainFrame::CreateCncList()
-{
-	int i;
-	CCurve* pCurve;
-	for (i=0;i<gWorkingPage.m_CurveList.GetSize();i++)
-	{
-		pCurve = (CCurve*)gWorkingPage.m_CurveList.GetAt(i);
-		if (pCurve->m_nPenNum > 1)
-		{
-			pCurve->OnToCutData();
-		}
-	}
-	if (g_ptrCncList.GetSize() <=0)
-	{
-		return 0; //没有切割数据
-	}
-	
-	CalculateAngles();
-	AddOverCutData(); //增加角度补偿值
-	CalculateAngles();
-	GetLongAxialSteps();
-	CalcCurvature();
-
-	setSpdLimit(gMacSet.getSpdDownType()); //
-	CalcCncSpeed();
-	CalcSdPercent();
-
-	GetCncMaxPulse();
-//	dumpCutDataToFile();
-
-	int	nSize = g_ptrCncList.GetSize();
-	if (nSize >= 0xffff) //切割数据大小超过1M
-	{
-		return -1;
-	}
-	return 0;
 }
 
 void CMainFrame::OnFILEATF10x10() 
 {
 	CString strFileName;
 	GetDocument()->OnRemoveDocAllData();
-	strFileName = gMacSet.m_strAppDir+"TestPlt\\10x10.plt";
+	strFileName = gSet.m_strAppDir+"TestPlt\\10x10.plt";
 	OnPltAddAuto(strFileName,FALSE);
 }
 
@@ -991,7 +774,7 @@ void CMainFrame::OnFILEATF20x20()
 {
 	CString strFileName;
 	GetDocument()->OnRemoveDocAllData();
-	strFileName = gMacSet.m_strAppDir+"TestPlt\\20x20.plt";
+	strFileName = gSet.m_strAppDir+"TestPlt\\20x20.plt";
 	OnPltAddAuto(strFileName,FALSE);
 }
 
@@ -999,7 +782,7 @@ void CMainFrame::OnFILEATF30x30()
 {
 	CString strFileName;
 	GetDocument()->OnRemoveDocAllData();
-	strFileName = gMacSet.m_strAppDir+"TestPlt\\30x30.plt";
+	strFileName = gSet.m_strAppDir+"TestPlt\\30x30.plt";
 	OnPltAddAuto(strFileName,FALSE);	
 }
 
@@ -1007,7 +790,7 @@ void CMainFrame::OnFILEATF40x40()
 {
 	CString strFileName;
 	GetDocument()->OnRemoveDocAllData();
-	strFileName = gMacSet.m_strAppDir+"TestPlt\\40x40.plt";
+	strFileName = gSet.m_strAppDir+"TestPlt\\40x40.plt";
 	OnPltAddAuto(strFileName,FALSE);
 }
 
@@ -1015,49 +798,10 @@ void CMainFrame::OnFILEATF50x50()
 {
 	CString strFileName;
 	GetDocument()->OnRemoveDocAllData();
-	strFileName = gMacSet.m_strAppDir+"TestPlt\\50x50.plt";
+	strFileName = gSet.m_strAppDir+"TestPlt\\50x50.plt";
 	OnPltAddAuto(strFileName,FALSE);
 }
 
-void CMainFrame::OnUpdateWorkStart(CCmdUI* pCmdUI) 
-{
-#if (YHZ_DEBUG == 0)
-	if( (GetDocument()->m_ArrayPage.GetSize() > 0) &&
-		( (gSysState==READY) || (gSysState == WORK_PAUSE) ) )
-	{
-		pCmdUI->Enable(TRUE);
-	}
-	else
-	{
-		pCmdUI->Enable(FALSE);
-	}
-#endif
-}
-
-void CMainFrame::OnUpdateWorkPause(CCmdUI* pCmdUI) 
-{
-	if( ( gSysState == WORKING )&& (gThrdWork != NULL) )
-	{
-		pCmdUI->Enable(TRUE);
-	}
-	else
-	{
-		pCmdUI->Enable(FALSE);
-	}
-}
-
-
-void CMainFrame::OnUpdateWorkCancel(CCmdUI* pCmdUI) 
-{
-	if( (gSysState == WORKING) || (gSysState == WORK_PAUSE) )
-	{
-		pCmdUI->Enable(TRUE);
-	}
-	else
-	{
-		pCmdUI->Enable(FALSE);
-	}
-}
 
 void CMainFrame::OnWorkCancel() 
 {
@@ -1065,16 +809,16 @@ void CMainFrame::OnWorkCancel()
 	{
 		if (gThrdWork == NULL)
 		{
-			gMacSet.setQueryEnable(FALSE);
-			gUSB.OnWorkCtrl(WORKCMD_CANCEL);
-			GetDocument()->OnRemoveDocAllData();
-			m_pListView->UpdateList();
-			m_pMainView->OnReDraw();
-			gMacSet.setQueryEnable(TRUE);
+			gSet.setQueryEnable(FALSE);
+ 			gCommu.OnCmd0(CMD0_WCANCEL);
+ 			GetDocument()->OnRemoveDocAllData();
+ 			m_pListView->UpdateList();
+ 			m_pMainView->OnReDraw();
+			gSet.setQueryEnable(TRUE);
 		}
 		else
 		{
-			gMacSet.setThreadMessage(THREAD_MESSAGE_CANCEL);
+			gSet.setThreadMessage(THREAD_MESSAGE_CANCEL);
 		}
 	}
 	return;
@@ -1086,12 +830,12 @@ void CMainFrame::OnWorkStart()
 	{
 		if (OnStartProcess() != 0)
 		{
-			gMacSet.setQueryEnable(TRUE);
+			gSet.setQueryEnable(TRUE);
 		}
 	}
-	else if (gSysState == WORK_PAUSE)
+	else if ((gSysState & 0x0f) == WORK_PAUSE)
 	{
-		gMacSet.setThreadMessage(THREAD_MESSAGE_RESUME);
+		gSet.setThreadMessage(THREAD_MESSAGE_RESUME);
 	}
 	return;
 }
@@ -1100,7 +844,7 @@ void CMainFrame::OnWorkPause()
 {
 	if (gThrdWork != NULL)
 	{
-		gMacSet.setThreadMessage(THREAD_MESSAGE_PAUSE);
+		gSet.setThreadMessage(THREAD_MESSAGE_PAUSE);
 	}
 }
 
@@ -1145,4 +889,388 @@ void CMainFrame::OnUpdateLanEn(CCmdUI* pCmdUI)
 	{
 		pCmdUI->SetCheck(FALSE);
 	}	
+}
+
+int CMainFrame::CreateCncList()
+{
+	int i;
+	CCurve* pCurve;
+	for (i = 0; i < gWorkingPage.m_CurveList.GetSize(); i++)
+	{
+		pCurve = (CCurve*)gWorkingPage.m_CurveList.GetAt(i);
+		if (pCurve->m_nPenNum > 1)
+		{
+			pCurve->OnToCutData();
+		}
+	}
+	if (g_ptrCncList.GetSize() <= 0)
+	{
+		return 0; //没有切割数据
+	}
+
+	CalculateAngles();
+	if (gSet.getOverCutLen() > 0)
+	{
+		AddOverCutData(); //增加角度补偿值
+		CalculateAngles();
+	}
+
+	GetLongAxialSteps();
+	RemoveDupPoints();//20161215利用算法将线段密度稀疏
+	CalculateAngles();
+
+	GetLongAxialSteps();
+	RemoveDupPoints();//20161215利用算法将线段密度稀疏
+	CalculateAngles();
+
+	GetLongAxialSteps();
+	RemoveDupPoints();//20161215利用算法将线段密度稀疏
+	CalculateAngles();
+
+	GetLongAxialSteps();
+	RemoveDupPoints();//20161215利用算法将线段密度稀疏
+	CalculateAngles();
+
+	GetLongAxialSteps();
+	SetSecType(); //是弧线还是直线
+	SetCurveType2();
+	getCncMaxSpeed();
+	CalculateSecNum();
+	CalculateCncEndSpeed();
+
+#ifdef _DEBUG
+	dumpCutDataToFile();
+#endif
+
+	int	nSize = g_ptrCncList.GetSize();
+	if (nSize >= 0xffff) //切割数据大小超过1M
+	{
+		return -1;
+	}
+	return 0;
+}
+
+void getCncMaxSpeed(void)
+{
+	int i, nSize;
+	ST_CNC_DATA_ALL *pCncData;
+	nSize = g_ptrCncList.GetSize();
+	if (nSize == 0)
+	{
+		return;
+	}
+	for (i = 0; i <= nSize - 1; i++)
+	{
+		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
+		switch (pCncData->m_cCmdType)
+		{
+		case TYPE_MOVE:
+			pCncData->m_nMaxSpeed = 0;
+			break;
+
+		case TYPE_CUT:
+			if (pCncData->m_cIsCurve == 1)
+			{
+				pCncData->m_nMaxSpeed = gSet.getCurveSpd();
+			}
+			else if (pCncData->m_cIsCurve == 2) //曲率比较高的弧线
+			{
+				pCncData->m_nMaxSpeed = 4; //20161215
+			}
+			else if (pCncData->m_cIsCurve == 3) //曲率比较高的弧线
+			{
+				pCncData->m_nMaxSpeed = 2; //20161215
+			}
+			else
+			{
+				pCncData->m_nMaxSpeed = MAX_SPD;
+			}
+			break;
+		}
+	}
+}
+
+void SetCurveType2(void)
+{
+	int i, nSize;
+	double d;
+	ST_CNC_DATA_ALL *pCncData;
+	nSize = g_ptrCncList.GetSize();
+	if (nSize == 0)
+	{
+		return;
+	}
+	for (i = 0; i < nSize; i++)
+	{
+		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
+		switch (pCncData->m_cCmdType)
+		{
+		case TYPE_CUT:
+			if (pCncData->m_cIsCurve == 1)
+			{
+				d = fabs(pCncData->m_dDeltaAngle)*100.0 / pCncData->m_nLongAxialStep;
+				if( (d > 0.5 )||(pCncData->m_nLongAxialStep < 30) )
+				{
+					pCncData->m_cIsCurve = 3;
+				}
+				else if( (d > 0.1)||(pCncData->m_nLongAxialStep < 60 ) )
+				{
+					pCncData->m_cIsCurve = 2;
+				}
+
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
+}
+
+void SetSecType(void)
+{
+	int i, nSize;
+	ST_CNC_DATA_ALL *pCncData;
+	nSize = g_ptrCncList.GetSize();
+	if (nSize == 0)
+	{
+		return;
+	}
+
+	for (i = 0; i < nSize; i++) //第一遍，遍历找到每段最大起始速度
+	{
+		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
+		switch (pCncData->m_cCmdType)
+		{
+		case TYPE_MOVE:
+			pCncData->m_cIsCurve = 0;
+			break;
+
+		case TYPE_CUT:
+//			if (((fabs(pCncData->m_dDeltaAngle*180.0 / PI) > CURVE_ANGLE) && (pCncData->m_nLongAxialStep < 200)) //
+			if (((fabs(pCncData->m_dDeltaAngle*180.0 / PI) > CURVE_ANGLE) && (pCncData->m_nLongAxialStep < 600)) //20161202
+					|| (pCncData->m_nLongAxialStep < 20))
+			{
+				pCncData->m_cIsCurve = 1;
+			}
+			else
+			{
+				pCncData->m_cIsCurve = 0;
+			}
+			break;
+		}
+	}
+
+	ST_CNC_DATA_ALL *pCncDataPrev;
+	ST_CNC_DATA_ALL *pCncDataNext;
+
+	for (i = 1; i < nSize - 1; i++)
+	{
+		pCncDataPrev = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i - 1);
+		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
+		pCncDataNext = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 1);
+		if ((TYPE_CUT == pCncDataPrev->m_cCmdType)
+			&& (TYPE_CUT == pCncData->m_cCmdType)
+			&& (TYPE_CUT == pCncDataNext->m_cCmdType))
+		{
+			if ((pCncDataPrev->m_cIsCurve) && (pCncDataNext->m_cIsCurve) && ((pCncData->m_nLongAxialStep < 300)))
+			{
+				pCncData->m_cIsCurve = 1;
+			}
+		}
+	}
+
+	ST_CNC_DATA_ALL *pCncDataNextNext;
+
+	for (i = 1; i < nSize - 2; i++)
+	{
+		pCncDataPrev = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i - 1);
+		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
+		pCncDataNext = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 1);
+		pCncDataNextNext = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 2);
+		if ((TYPE_CUT == pCncDataPrev->m_cCmdType)
+			&& (TYPE_CUT == pCncData->m_cCmdType)
+			&& (TYPE_CUT == pCncDataNext->m_cCmdType)
+			&& (TYPE_CUT == pCncDataNextNext->m_cCmdType))
+		{
+			if ((pCncDataPrev->m_cIsCurve) && (pCncDataNextNext->m_cIsCurve))
+			{
+				if ((pCncData->m_nLongAxialStep + pCncDataNext->m_nLongAxialStep) < 400)
+				{
+					pCncData->m_cIsCurve = 1;
+					pCncDataNext->m_cIsCurve = 1;
+				}
+			}
+		}
+	}
+
+	ST_CNC_DATA_ALL *pCncDataNextNextNext;
+	for (i = 1; i < nSize - 3; i++)
+	{
+		pCncDataPrev = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i - 1);
+		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
+		pCncDataNext = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 1);
+		pCncDataNextNext = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 2);
+		pCncDataNextNextNext = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 3);
+
+		if ((TYPE_CUT == pCncDataPrev->m_cCmdType)
+			&& (TYPE_CUT == pCncData->m_cCmdType)
+			&& (TYPE_CUT == pCncDataNext->m_cCmdType)
+			&& (TYPE_CUT == pCncDataNextNext->m_cCmdType)
+			&& (TYPE_CUT == pCncDataNextNextNext->m_cCmdType))
+		{
+			if ((pCncDataPrev->m_cIsCurve) && (pCncDataNextNextNext->m_cIsCurve))
+			{
+				if ((pCncData->m_nLongAxialStep
+					+ pCncDataNext->m_nLongAxialStep
+					+ pCncDataNextNextNext->m_nLongAxialStep) < 500)
+				{
+					pCncData->m_cIsCurve = 1;
+					pCncDataNext->m_cIsCurve = 1;
+				}
+			}
+		}
+	}
+}
+
+void CalculateSecNum()
+{
+	int i;
+	ST_CNC_DATA_ALL *pCncData;
+	int nSize;
+	int nMaxStep;
+
+	nSize = g_ptrCncList.GetSize();
+	if (nSize == 0)
+	{
+		return;
+	}
+	for (i = 0; i < nSize; i++)
+	{
+		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
+		nMaxStep = (abs(pCncData->m_iDeltaX) > abs(pCncData->m_iDeltaY)) ? abs(pCncData->m_iDeltaX) : abs(pCncData->m_iDeltaY);
+		pCncData->m_nSecNum = nMaxStep / gSet.getSecLen(); //分段长度60
+		if (0 == pCncData->m_nSecNum)
+		{
+			pCncData->m_nSecNum = 1;
+		}
+	}
+}
+
+
+void CalculateCncEndSpeed(void)
+{
+	int i, nSize;
+	ST_CNC_DATA_ALL *pCncData;
+	ST_CNC_DATA_ALL *pCncDataNext;
+	nSize = g_ptrCncList.GetSize();
+	if (nSize == 0)
+	{
+		return;
+	}
+
+	pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(nSize - 1);
+	pCncData->m_nMaxEndSpeed = 0;
+
+	for (i = nSize - 2; i >= 0; i--)
+	{
+		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
+		pCncDataNext = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 1);
+		if (fabs(pCncDataNext->m_dDeltaAngle)*180.0 / PI >= SD0_ANGLE)
+		{
+			pCncData->m_nMaxEndSpeed = 0;
+		}
+
+		else if ((TYPE_CUT == pCncData->m_cCmdType)
+			&& (TYPE_CUT == pCncDataNext->m_cCmdType))
+		{
+//			pCncData->m_nMaxEndSpeed = pCncDataNext->m_nMaxEndSpeed + (pCncDataNext->m_nSecNum - 1);
+			pCncData->m_nMaxEndSpeed = pCncDataNext->m_nMaxEndSpeed + (pCncDataNext->m_nSecNum);
+
+			if (fabs(pCncDataNext->m_dDeltaAngle*180.0 / PI) > SD5_ANGLE)
+			{
+				if (pCncData->m_nMaxEndSpeed > SD5_SPD)
+				{
+					pCncData->m_nMaxEndSpeed = SD5_SPD;
+				}
+			}
+
+			if (pCncData->m_nMaxEndSpeed > pCncData->m_nMaxSpeed)
+			{
+				pCncData->m_nMaxEndSpeed = pCncData->m_nMaxSpeed;
+			}
+			if (pCncData->m_nMaxEndSpeed > pCncDataNext->m_nMaxSpeed)
+			{
+				pCncData->m_nMaxEndSpeed = pCncDataNext->m_nMaxSpeed;
+			}
+		}
+		else
+		{
+			pCncData->m_nMaxEndSpeed = 0;
+		}
+	}
+}
+
+
+void CMainFrame::OnIdcbDlgBar()
+{
+	// TODO: 在此添加命令处理程序代码
+	if (m_bShowDlgBar)
+	{
+		ShowControlBar(&m_wndDlgBar, FALSE, FALSE);
+		m_bShowDlgBar = FALSE;
+	}
+	else
+	{
+		ShowControlBar(&m_wndDlgBar, TRUE, TRUE);
+		m_bShowDlgBar = TRUE;
+	}
+}
+
+
+void CMainFrame::OnUpdateIdcbDlgBar(CCmdUI *pCmdUI)
+{
+	// TODO: 在此添加命令更新用户界面处理程序代码
+	if (m_bShowDlgBar)
+		pCmdUI->SetCheck(TRUE);
+	else
+		pCmdUI->SetCheck(FALSE);
+}
+
+
+void CMainFrame::OnUpdateConnectViaEth(CCmdUI *pCmdUI)
+{
+	if (gSet.getConnetViaEth())
+	{
+		pCmdUI->SetCheck(TRUE);
+	}
+	else
+	{
+		pCmdUI->SetCheck(FALSE);
+	}
+}
+
+
+void CMainFrame::OnUpdateConnectViaUsb(CCmdUI *pCmdUI)
+{
+	if (gSet.getConnetViaEth())
+	{
+		pCmdUI->SetCheck(FALSE);
+	}
+	else
+	{
+		pCmdUI->SetCheck(TRUE);
+	}
+}
+
+
+void CMainFrame::OnConnectViaEth()
+{
+	gSet.setConnetViaEth(TRUE);
+}
+
+
+void CMainFrame::OnConnectViaUsb()
+{
+	gSet.setConnetViaEth(FALSE);
 }

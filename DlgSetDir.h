@@ -26,7 +26,6 @@ public:
 	BOOL	m_bMoveToLeft;
 	BOOL	m_bMoveToBottom;
 	UINT	m_nPltPageLen;
-	UINT	m_nMaxCurveLen;
 	UINT	m_nY1000Scale;
 	UINT	m_nX1000Scale;
 	BOOL	m_bFindOutline;

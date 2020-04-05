@@ -108,9 +108,9 @@ void CHpglFile::Text2LineInit(void)
 	
     m_ptCurrentPosition = NULL;
 	
-//    strCharFileName = gMacSet.m_strAppDir + _T("fon_en.bin");
+//    strCharFileName = gSet.m_strAppDir + _T("fon_en.bin");
 //    fFile1.Open((LPCTSTR)strCharFileName, CFile::modeRead | CFile::typeBinary);
-    fFile1.Open(gMacSet.m_strFonEn, CFile::modeRead | CFile::typeBinary);
+    fFile1.Open(gSet.m_strFonEn, CFile::modeRead | CFile::typeBinary);
     fFile1.SeekToBegin();
     fFile1.Read(byte, 10);
     m_nInternalLeading_E = (int)((WORD)byte[0] | ((WORD)byte[1] << 8));
@@ -136,7 +136,7 @@ void CHpglFile::Text2LineInit(void)
     }
     fFile1.Close();
 	
-    fFile1.Open(gMacSet.m_strFonHz, CFile::modeRead | CFile::typeBinary);
+    fFile1.Open(gSet.m_strFonHz, CFile::modeRead | CFile::typeBinary);
     fFile1.SeekToBegin();
     fFile1.Read(byte, 8);
     m_nWidth_C = (int)((WORD)byte[0] | ((WORD)byte[1] << 8));
@@ -774,8 +774,8 @@ void CHpglFile::Text2Line(CPoint dp, LPCTSTR lpszString, int nCount)
     int nIndex1, nIndex2, nIndex3, nIndex4;
     BOOL bEnglishChar;
 
-	fileEnglish.Open(gMacSet.m_strFonEn, CFile::modeRead | CFile::typeBinary);
-	fileChinese.Open(gMacSet.m_strFonHz, CFile::modeRead | CFile::typeBinary);
+	fileEnglish.Open(gSet.m_strFonEn, CFile::modeRead | CFile::typeBinary);
+	fileChinese.Open(gSet.m_strFonHz, CFile::modeRead | CFile::typeBinary);
 
     nLeft = 0;
     nIndex1 = 0;

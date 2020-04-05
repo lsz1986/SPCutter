@@ -4,7 +4,7 @@
 #include "stdafx.h"
 #include "SpCutter.h"
 #include "DlgMacPara.h"
-
+extern CWinThread* gThrdWork;
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -17,10 +17,14 @@ static char THIS_FILE[] = __FILE__;
 
 CDlgMacPara::CDlgMacPara(CWnd* pParent /*=NULL*/)
 	: CDialog(CDlgMacPara::IDD, pParent)
+	, m_bJobAutoStart(FALSE)
 {
 	//{{AFX_DATA_INIT(CDlgMacPara)
 	m_bSp1 = FALSE;
 	m_bSp2 = FALSE;
+	m_nBlankMM = 0;
+	m_bPlotOnly = FALSE;
+	m_bAutoClean = FALSE;
 	m_nLineWidth = 0;
 	m_nJobEndHeadPos = 0;
 	m_nKPDistX = 0;
@@ -32,8 +36,9 @@ CDlgMacPara::CDlgMacPara(CWnd* pParent /*=NULL*/)
 	m_nSpDDy = 0;
 	m_nKVolt_Start = 30;
 	m_nKVolt_Work = 30;
-	m_iAngleAdjust = 0;
-	m_nAutoCutLen = 0;
+	m_iAngleAdjust = 100;
+	m_nCutPaperStart = 0;
+	m_nCutPaperEnd = 0;
 	m_nOverCutLen = 0;
 	m_nJobEndPosXmm = 0;
 	m_nJobEndPosYmm = 0;
@@ -55,9 +60,9 @@ void CDlgMacPara::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDCE_LINE_WIDTH, m_nLineWidth);
 	DDV_MinMaxInt(pDX, m_nLineWidth, 1, 9);
 	DDX_Text(pDX, IDCE_KPX, m_nKPDistX);
-	DDV_MinMaxInt(pDX, m_nKPDistX, 0, 200);
+	DDV_MinMaxInt(pDX, m_nKPDistX, 0, 100);
 	DDX_Text(pDX, IDCE_KPY, m_nKPDistY);
-	DDV_MinMaxInt(pDX, m_nKPDistY, 0, 200);
+	DDV_MinMaxInt(pDX, m_nKPDistY, 0, 100);
 	DDX_Text(pDX, IDCE_10000X, m_n10000X);
 	DDV_MinMaxInt(pDX, m_n10000X, 9900, 10100);
 	DDX_Text(pDX, IDCE_10000Y, m_n10000Y);
@@ -74,8 +79,10 @@ void CDlgMacPara::DoDataExchange(CDataExchange* pDX)
 	DDV_MinMaxInt(pDX, m_nKVolt_Work, 10, 90);
 	DDX_Text(pDX, IDCE_ANGLE_ADJUST, m_iAngleAdjust);
 	DDV_MinMaxInt(pDX, m_iAngleAdjust, 50, 150);
-	DDX_Text(pDX, IDCE_AUTO_CUT_LEN, m_nAutoCutLen);
-	DDV_MinMaxInt(pDX, m_nAutoCutLen, 0, 200000);
+	DDX_Text(pDX, IDCE_CUT_PAPER_STSRT, m_nCutPaperStart);
+	DDV_MinMaxInt(pDX, m_nCutPaperStart, 0, 200000);
+	DDX_Text(pDX, IDCE_CUT_PAPER_END, m_nCutPaperEnd);
+	DDV_MinMaxInt(pDX, m_nCutPaperEnd, 0, 200000);
 	DDX_Text(pDX, IDCE_OVERCUT_LEN, m_nOverCutLen);
 	DDV_MinMaxUInt(pDX, m_nOverCutLen, 0, 200);
 	DDX_Text(pDX, IDCE_ENDPOS_X, m_nJobEndPosXmm);
@@ -87,9 +94,15 @@ void CDlgMacPara::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDCHK_BIDIR, m_bBiDir);
 	DDX_Text(pDX, IDCE_LED_LAN, m_nLedLan);
 	DDV_MinMaxUInt(pDX, m_nLedLan, 0, 1);
+	DDX_Control(pDX, IDTXT_DATADIR, m_hyperLinkDataDir);
+	DDX_Text(pDX, IDCE_BLANKMM, m_nBlankMM);
+	DDV_MinMaxInt(pDX, m_nBlankMM, 0, 100);
+	DDX_Check(pDX, IDCHK_ONLYPLOT, m_bPlotOnly);
+	DDX_Check(pDX, IDCHK_CLEANSP, m_bAutoClean);
 	//}}AFX_DATA_MAP
+	DDX_Check(pDX, IDCHK_JOB_AUTO_START, m_bJobAutoStart);
+	DDX_Control(pDX, IDC_IPADDR, m_ctrlMachineAddr);
 }
-
 
 BEGIN_MESSAGE_MAP(CDlgMacPara, CDialog)
 	//{{AFX_MSG_MAP(CDlgMacPara)
@@ -104,6 +117,9 @@ BEGIN_MESSAGE_MAP(CDlgMacPara, CDialog)
 	ON_COMMAND(IDM_1510, On1510)
 	ON_COMMAND(IDM_1512, On1512)
 	//}}AFX_MSG_MAP
+	ON_BN_CLICKED(IDCB_SET_AUTO_DIR, &CDlgMacPara::OnBnClickedButton1)
+	ON_BN_CLICKED(IDOK, &CDlgMacPara::OnBnClickedOk)
+	ON_BN_CLICKED(IDCB_IP_DEFAULT, &CDlgMacPara::OnBnClickedIpDefault)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -112,6 +128,8 @@ END_MESSAGE_MAP()
 BOOL CDlgMacPara::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
+	unsigned char IpSec[4];
+	
 // TODO: Add extra initialization here
 	if (gDispSet.getLanguage() == 0) {
 		m_ctrlComboEndPos.AddString("图形右下角");
@@ -125,6 +143,11 @@ BOOL CDlgMacPara::OnInitDialog()
 	m_ComboSpType.AddString("IUT308");
 
 	OnUpdateParaToCtrl();
+
+	IpSec[0] = m_nIpAddr & 0xff;
+	IpSec[1] = (m_nIpAddr >> 8) & 0xff;
+	IpSec[2] = (m_nIpAddr >> 16) & 0xff;
+	IpSec[3] = (m_nIpAddr >> 24) & 0xff;
 
 	if(g_bParaRead == FALSE)
 	{
@@ -151,7 +174,8 @@ BOOL CDlgMacPara::OnInitDialog()
 		GetDlgItem(IDCE_SP12EY)->EnableWindow(FALSE);
 
 		GetDlgItem(IDCE_SPDDY)->EnableWindow(FALSE);
-		GetDlgItem(IDCE_AUTO_CUT_LEN)->EnableWindow(FALSE);
+		GetDlgItem(IDCE_CUT_PAPER_STSRT)->EnableWindow(FALSE);
+		GetDlgItem(IDCE_CUT_PAPER_END)->EnableWindow(FALSE);
 
 		GetDlgItem(IDCMB_END_POS)->EnableWindow(FALSE);
 		GetDlgItem(IDCE_ENDPOS_X)->EnableWindow(FALSE);
@@ -159,73 +183,20 @@ BOOL CDlgMacPara::OnInitDialog()
 
 		GetDlgItem(IDCE_LED_LAN)->EnableWindow(FALSE);
 
-		GetDlgItem(IDCB_PROTECT_PARA)->EnableWindow(FALSE);
+//		GetDlgItem(IDCB_PROTECT_PARA)->EnableWindow(FALSE);
 		GetDlgItem(IDCB_PARA_SAVE)->EnableWindow(FALSE);
-//		GetDlgItem(IDCB_PARA_RESTORE)->EnableWindow(FALSE);
-		
+
 		GetDlgItem(IDCE_LINE_WIDTH)->EnableWindow(FALSE);
-		GetDlgItem(IDOK)->EnableWindow(FALSE);		
+//		GetDlgItem(IDOK)->EnableWindow(FALSE);		
 	}
+	m_ctrlMachineAddr.SetAddress(IpSec[0], IpSec[1], IpSec[2], IpSec[3]);
+
+	GetDlgItem(IDTXT_DATADIR)->SetWindowText(gSet.m_strDataDir);
+	m_hyperLinkDataDir.SetURL(gSet.m_strDataDir);
+	m_strTempDataDir = gSet.m_strDataDir;
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
-}
-
-void CDlgMacPara::OnOK() 
-{
-// TODO: Add extra validation here
-	UpdateData(TRUE);
-	gMacSet.setLineWidth(m_nLineWidth);
-	gMacSet.setOverCutLen(m_nOverCutLen);
-	gMacSet.setBiDir(m_bBiDir);
-	m_nSpType = m_ComboSpType.GetCurSel();
-	gMacSet.setSpType(m_nSpType);
-
-	gMacSet.set10000X(m_n10000X);
-	gMacSet.set10000Y(m_n10000Y);
-
-	gMacSet.setSP1DOTLR(m_nSp1LrDot);
-	gMacSet.setSP2DOTLR(m_nSp2LrDot);
-
-	m_nJobEndHeadPos = m_ctrlComboEndPos.GetCurSel();
-	gMacSet.setJobEndHeadPos(m_nJobEndHeadPos);
-
-	gMacSet.setJobEndPosXmm(m_nJobEndPosXmm);
-	gMacSet.setJobEndPosYmm(m_nJobEndPosYmm);
-
-	gMacSet.setKPDistX(m_nKPDistX);
-	gMacSet.setKPDistY(m_nKPDistY);
-	gMacSet.setSpEX(m_nSpEx);
-	gMacSet.setSp12EY(m_nSp12EY);
-	gMacSet.setBiDir(m_bBiDir);
-	gMacSet.setSpDDY(m_nSpDDy);
-	gMacSet.setLedLan(m_nLedLan);
-
-	gMacSet.setPwmKStart(m_nKVolt_Start);
-	gMacSet.setPwmKWork(m_nKVolt_Work);
-
-	gMacSet.setAngleAdjust(m_iAngleAdjust);
-	gMacSet.setCutEndPosYmm(m_nAutoCutLen);
-
-	if( (m_bSp1 == TRUE)&&(m_bSp2 == FALSE) )
-	{
-		gMacSet.setSpStat(1);
-	}
-	else if( (m_bSp1 == FALSE)&&(m_bSp2 == TRUE) )
-	{
-		gMacSet.setSpStat(2);
-	}
-	else
-	{
-		gMacSet.setSpStat(0);
-	}
-
-	if(g_bParaRead == TRUE)
-	{
-		WritePlotPara();
-	}
-
-	CDialog::OnOK();
 }
 
 void CDlgMacPara::OnCheck1() 
@@ -248,53 +219,69 @@ void CDlgMacPara::OnCheck2()
 	UpdateData(FALSE);
 }
 
+#include "DlgPwdInput.h"
 #include "DlgProtectPara.h"
 void CDlgMacPara::OnProtectPara() 
 {
-	// TODO: Add your control notification handler code here
-	CDlgProtectPara dlg;
-	dlg.DoModal();
+	CDlgPwdInput dlg;
+	if (IDOK == dlg.DoModal())
+	{
+		if (dlg.m_strPwd == "gm")
+		{
+			CDlgProtectPara dlg;
+			dlg.DoModal();
+		}
+		else
+		{
+			AfxMessageBox("密码错误");
+		}
+	}
 }
 
 void CDlgMacPara::OnUpdateParaToCtrl()
 {
-	m_nLineWidth = gMacSet.getLineWidth();
-	m_ctrlComboEndPos.SetCurSel(gMacSet.getJobEndHeadPos());
-	m_ComboSpType.SetCurSel(gMacSet.getSpType());
-	
-	m_nJobEndHeadPos = gMacSet.getJobEndHeadPos();
-	m_nJobEndPosXmm = gMacSet.getJobEndPosXmm();
-	m_nJobEndPosYmm = gMacSet.getJobEndPosYmm();
-	
-	m_nKPDistX = gMacSet.getKPDistX();
-	m_nKPDistY = gMacSet.getKPDistY();
-	
-	m_n10000X = gMacSet.get10000X();
-	m_n10000Y = gMacSet.get10000Y();
-	
-	m_nSp1LrDot = gMacSet.getSP1DOTLR();
-	m_nSp2LrDot = gMacSet.getSP2DOTLR();
-	
-	m_nSpEx = gMacSet.getSpEX();
-	
-	m_nSp12EY = gMacSet.getSp12EY();
-	
-	m_nSpDDy = gMacSet.getSpDDY();
-	
-	m_nOverCutLen = gMacSet.getOverCutLen();
-	
-	m_iAngleAdjust = gMacSet.getAngleAdjust();
-	
-	m_nKVolt_Start = gMacSet.getPwmKStart();
-	m_nKVolt_Work = gMacSet.getPwmKWork();
-	
-	m_nAutoCutLen = gMacSet.getCutEndPosYmm();
-	
-	m_bBiDir = gMacSet.getBiDir();
+	m_bJobAutoStart = gSet.getJobAutoStart();
+	m_bBiDir = gSet.getBiDir();
+	m_bPlotOnly = gSet.getOnlyPlot();
+	m_bAutoClean = gSet.getSpAutoClean();
 
-	m_nLedLan = gMacSet.getLedLan();
+	m_nLineWidth = gSet.getLineWidth();
+	m_ctrlComboEndPos.SetCurSel(gSet.getJobEndHeadPos());
+	m_ComboSpType.SetCurSel(gSet.getSpType());
+	
+	m_nJobEndHeadPos = gSet.getJobEndHeadPos();
+	m_nJobEndPosXmm = gSet.getJobEndPosXmm();
+	m_nJobEndPosYmm = gSet.getJobEndPosYmm();
+	
+	m_nKPDistX = gSet.getKPDistX();
+	m_nKPDistY = gSet.getKPDistY();
+	
+	m_n10000X = gSet.get10000X();
+	m_n10000Y = gSet.get10000Y();
+	
+	m_nSp1LrDot = gSet.getSP1DOTLR();
+	m_nSp2LrDot = gSet.getSP2DOTLR();
+	
+	m_nSpEx = gSet.getSpEX();
+	
+	m_nSp12EY = gSet.getSp12EY();
+	
+	m_nSpDDy = gSet.getSpDDY();
+	
+	m_nOverCutLen = gSet.getOverCutLen();
+	
+	m_iAngleAdjust = gSet.getAngleAdjust();
+	
+	m_nKVolt_Start = gSet.getPwmKStart();
+	m_nKVolt_Work = gSet.getPwmKWork();
+	
+	m_nCutPaperStart = gSet.getCutPaperStartYmm();
+	m_nCutPaperEnd = gSet.getCutPaperEndYmm();
 
-	switch (gMacSet.getSpStat())
+	m_nLedLan = gSet.getLedLan();
+	m_nBlankMM = gSet.getYBlankMm();
+
+	switch (gSet.getSpStat())
 	{
 	case 1:
 		m_bSp1 = TRUE;
@@ -311,10 +298,9 @@ void CDlgMacPara::OnUpdateParaToCtrl()
 		m_bSp2 = TRUE;
 		break;
 	}
-	
+	m_nIpAddr = gSet.getMachineIpAddr();
 	UpdateData(FALSE);
 }
-
 
 void CDlgMacPara::OnParaDefault() 
 {
@@ -328,22 +314,22 @@ void CDlgMacPara::OnParaDefault()
 
 void CDlgMacPara::On1209() 
 {
-	OnRestorePara(gMacSet.m_strAppDir+"para\\出厂1209.v6scp");	
+	OnRestorePara(gSet.m_strAppDir+"para\\出厂1209.v6scp");	
 }
 
 void CDlgMacPara::On1509() 
 {
-	OnRestorePara(gMacSet.m_strAppDir+"para\\出厂1509.v6scp");
+	OnRestorePara(gSet.m_strAppDir+"para\\出厂1509.v6scp");
 }
 
 void CDlgMacPara::On1510()
 {
-	OnRestorePara(gMacSet.m_strAppDir+"para\\出厂1510.v6scp");
+	OnRestorePara(gSet.m_strAppDir+"para\\出厂1510.v6scp");
 }
 
 void CDlgMacPara::On1512() 
 {
-	OnRestorePara(gMacSet.m_strAppDir+"para\\出厂1512.v6scp");
+	OnRestorePara(gSet.m_strAppDir+"para\\出厂1512.v6scp");
 }
 
 void CDlgMacPara::OnRestorePara(CString ParaFileName)
@@ -358,14 +344,14 @@ void CDlgMacPara::OnRestorePara(CString ParaFileName)
 		}
 		return;
 	}
-	UNION_MAC_PARA tepmPara;
-	scpFile.Read(&tepmPara.charBuff[0],MAC_PARA_SIZE);
+
+	scpFile.Read(&gPara,MAC_PARA_SIZE);
 	scpFile.Close();
-	gPara = tepmPara.stBuff;
 	gParaTogSet();
 	
-	gMacSet.setOverCutLen(0); //恢复参数时
-	gMacSet.setLineWidth(1); //恢复参数时
+	gSet.setOverCutLen(0); //恢复参数时
+	gSet.setLineWidth(1); //恢复参数时
+	gSet.setYBlankMm(0);
 	OnUpdateParaToCtrl();
 	return;	
 }
@@ -404,9 +390,7 @@ void CDlgMacPara::OnParaSave()
 		}
 		
 		scpFile.Open(strFileName,CFile::modeCreate|CFile::modeReadWrite|CFile::typeBinary);
-		UNION_MAC_PARA tepmPara;
-		tepmPara.stBuff = gPara;
-		scpFile.Write(&tepmPara.charBuff[0],MAC_PARA_SIZE);
+		scpFile.Write(&gPara,MAC_PARA_SIZE);
 		scpFile.Close();
 	}
 }
@@ -424,3 +408,156 @@ void CDlgMacPara::OnParaRestore()
 	}
 }
 
+void CDlgMacPara::OnBnClickedButton1()
+{
+	CString str;
+	BROWSEINFO bi;
+	char name[MAX_PATH];
+	ZeroMemory(&bi, sizeof(BROWSEINFO));
+	bi.hwndOwner = GetSafeHwnd();
+	bi.pszDisplayName = name;
+	str.Format("选择绘图文件存放的目录");
+	bi.lpszTitle = str;//"选择绘图文件存放的目录";
+	bi.ulFlags = 0;
+
+	LPITEMIDLIST idl = SHBrowseForFolder(&bi);
+	if (idl == NULL)
+		return;
+
+	SHGetPathFromIDList(idl, str.GetBuffer(MAX_PATH));
+	str.ReleaseBuffer();
+	str += "\\";
+
+	if ((str == gSet.m_strAppDir) || (str.GetLength() < 3))
+	{
+		CString str;
+		str.Format("非法的临时文件目录");
+		MessageBox(str);
+	}
+	else
+	{
+		if (FALSE == DirIsEmpty(str)) //当前目录非空
+		{
+			if (IDOK == MessageBox("当前设置的目录非空，\n如果设置成自动绘图目录，\n当前目录下的文件将被删除。\n是否继续？", "警告！！！", MB_ICONWARNING | MB_OKCANCEL))
+			{
+				m_strTempDataDir = str;
+				if (str.GetAt(str.GetLength() - 1) != '\\')
+					m_strTempDataDir += "\\";
+			}
+		}
+		else
+		{
+			m_strTempDataDir = str;
+			if (str.GetAt(str.GetLength() - 1) != '\\')
+				m_strTempDataDir += "\\";
+		}
+	}
+	GetDlgItem(IDTXT_DATADIR)->SetWindowText(m_strTempDataDir);
+	m_hyperLinkDataDir.SetURL(m_strTempDataDir);
+	gSet.m_strDataDir = m_strTempDataDir;
+	Invalidate();
+}
+
+BOOL CDlgMacPara::DirIsEmpty(CString strDir)
+{
+	BOOL bFindFile;
+	CFileFind fileFind;
+	bFindFile = fileFind.FindFile(strDir + "*.*");
+	if (FALSE == bFindFile)
+	{
+		return TRUE;
+	}
+
+	while (TRUE == bFindFile)
+	{
+		bFindFile = fileFind.FindNextFile();
+		if ((!fileFind.IsDirectory()) && (!fileFind.IsDots()))
+		{
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
+
+void CDlgMacPara::OnBnClickedOk()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	unsigned char IpSec[4];
+	UpdateData(TRUE);
+	gSet.setBiDir(m_bBiDir);
+	gSet.setJobAutoStart(m_bJobAutoStart);
+
+	gSet.setOverCutLen(m_nOverCutLen);
+	m_nSpType = m_ComboSpType.GetCurSel();
+	gSet.setSpType(m_nSpType);
+
+	gSet.set10000X(m_n10000X);
+	gSet.set10000Y(m_n10000Y);
+
+	gSet.setSP1DOTLR(m_nSp1LrDot);
+	gSet.setSP2DOTLR(m_nSp2LrDot);
+
+	m_nJobEndHeadPos = m_ctrlComboEndPos.GetCurSel();
+	gSet.setJobEndHeadPos(m_nJobEndHeadPos);
+
+	gSet.setJobEndPosXmm(m_nJobEndPosXmm);
+	gSet.setJobEndPosYmm(m_nJobEndPosYmm);
+
+	gSet.setKPDistX(m_nKPDistX);
+	gSet.setKPDistY(m_nKPDistY);
+	gSet.setSpEX(m_nSpEx);
+	gSet.setSp12EY(m_nSp12EY);
+	gSet.setBiDir(m_bBiDir);
+	gSet.setSpDDY(m_nSpDDy);
+	gSet.setLedLan(m_nLedLan);
+
+	gSet.setPwmKStart(m_nKVolt_Start);
+	gSet.setPwmKWork(m_nKVolt_Work);
+
+	gSet.setAngleAdjust(m_iAngleAdjust);
+	gSet.setCutPaperStartYmm(m_nCutPaperStart);
+	gSet.setCutPaperEndYmm(m_nCutPaperEnd);
+
+	m_ctrlMachineAddr.GetAddress(IpSec[0], IpSec[1], IpSec[2], IpSec[3]);
+	m_nIpAddr = IpSec[0] | (IpSec[1] << 8) | (IpSec[2] << 16) | (IpSec[3] << 24);
+	gSet.setMachineIpAddr(m_nIpAddr);
+
+	if ((m_bSp1 == TRUE) && (m_bSp2 == FALSE))
+	{
+		gSet.setSpStat(1);
+	}
+	else if ((m_bSp1 == FALSE) && (m_bSp2 == TRUE))
+	{
+		gSet.setSpStat(2);
+	}
+	else
+	{
+		gSet.setSpStat(0);
+	}
+
+	if ((gSysState & 0x0f) == READY)
+	{
+		gSet.setQueryEnable(FALSE);
+		WritePlotPara();
+		gSet.setQueryEnable(TRUE);
+	}
+	else if (gThrdWork != NULL)
+	{
+		gSet.setParaUpdateFlag(TRUE);
+	}
+
+	//-----------------------仅输出中心保存的参数0
+	gSet.setSpAutoClean(m_bAutoClean);
+	gSet.setOnlyPlot(m_bPlotOnly);
+	gSet.setYBlankMm(m_nBlankMM);
+	gSet.setLineWidth(m_nLineWidth);
+	//------------------------
+
+	CDialog::OnOK();
+}
+
+
+void CDlgMacPara::OnBnClickedIpDefault()
+{
+	m_ctrlMachineAddr.SetAddress(192, 168, 1, 218);
+}

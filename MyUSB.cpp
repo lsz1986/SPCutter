@@ -10,25 +10,12 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-#define MY_VID 0xA728 //厂商ID
-#define MY_PID 0x0500 //产品ID
-
-#define MY_CONFIG 1
-#define MY_INTF 0
-
-
-#define EP1_IN 0x81
-#define EP2_OUT 0x02
-#define EP3_OUT 0x03
-
 usb_dev_handle *open_dev(void);
-
-
 usb_dev_handle *open_dev(void)
 {
 	struct usb_bus *bus;
 	struct usb_device *dev;
-	
+
 	for (bus = usb_get_busses(); bus; bus = bus->next)
 	{
 		for (dev = bus->devices; dev; dev = dev->next)
@@ -48,15 +35,15 @@ CMyUSB::CMyUSB()
 	usb_init(); /* initialize the library */
 	usb_find_busses(); /* find all busses */
 	m_nDeviceFound = usb_find_devices(); /* find all connected devices */
-	InitializeCriticalSection(&m_cs);//
+	InitializeCriticalSection(&m_cs);
 }
 
 CMyUSB::~CMyUSB()
 {
-	Close();
+	USBClose();
 }
 
-void CMyUSB::Close()
+void CMyUSB::USBClose()
 {
 	if (m_pUSBdev != 0)
 	{
@@ -66,7 +53,7 @@ void CMyUSB::Close()
 	}
 }
 
-int CMyUSB::Open()
+int CMyUSB::USBOpen()
 {
 	if (m_pUSBdev == 0)
 	{
@@ -88,709 +75,111 @@ int CMyUSB::Open()
 	return 0;
 }
 
-int CMyUSB::Read(char *pbBuf, ULONG len)
+int CMyUSB::UsbRead(char *pbBuf, ULONG len)
 {
 	int ret;
-	if (Open() != 0)
+	if (USBOpen() != 0)
 	{
 		return -1;
 	}
 
 	ret = usb_bulk_read(m_pUSBdev, EP1_IN, pbBuf, len, 1000);
-	Close(); //每读取一次就关闭??
+
+	USBClose(); //每读取一次就关闭??
 	return ret;
 }
 
-int CMyUSB::WriteCmd(char *pbBuf, ULONG len)
+int CMyUSB::USBWrite(char *pbBuf, ULONG len)
 {
 	int ret;
-
-	if (Open() != 0)
+	if (USBOpen() != 0)
 	{
 		return -1;
 	}
 
 	ret = usb_bulk_write(m_pUSBdev, EP2_OUT, pbBuf, len, 50);
 
-	Close(); //每发送一个命令就关闭??
+	USBClose(); //每发送一个命令就关闭??
 	return ret;
 }
 
 int CMyUSB::WriteBulk(char *pbBuf, ULONG len)
 {
 	int ret=0;
-	EnterCriticalSection(&m_cs);
 
-	if (Open() != 0)
+	EnterCriticalSection(&m_cs);
+	if (USBOpen() != 0)
 	{
 		ret = -1;
 	}
 
 	ret = usb_bulk_write(m_pUSBdev, EP3_OUT, pbBuf, len, 1000);
-	Close(); //每发送一包数据就关闭
+	USBClose(); //每发送一包数据就关闭
 	LeaveCriticalSection(&m_cs);
 	return ret;
 }
 
-int CMyUSB::OnParaRead()
+int CMyUSB::OnCmd0(u8 cmd)
 {
 	int rev;
 	EnterCriticalSection(&m_cs);
-	rev = OnParaRead_0();
+	rev = OnCmd0_USB(cmd);
 	LeaveCriticalSection(&m_cs);
 	return rev;
 }
 
-int CMyUSB::OnParaRead_0()
+int CMyUSB::OnCmd0_USB(u8 cmd)
 {
-//命令格式: 长度(1B) + 命令头ZHKJ(4B) + CMD_READ_PARA 
-//返回值: -1 命令失败,0 命令成功
-
 	char buff[64];
-	int ret=0;
-	int i;
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_PARA_READ;
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
+	int rlen;
+	buff[0] = 2;
+	buff[1] = cmd;
+
+	if (((int)buff[0]) != (USBWrite(&buff[0], buff[0])))
 	{
 		return -1; //命令发送失败
 	}
-	if( Read(buff,64) != MAC_PARA_SIZE)
+	rlen = UsbRead(buff, 64);
+	if (rlen != 1)
 	{
-		return -1;
+		return -2;
 	}
-	for(i=0;i<MAC_PARA_SIZE;i++)
-	{
-		gTempPara.charBuff[i] = buff[i];
-	}
+	gSysState = buff[0]; //CMD0_GET_STAT
 	return 0;
 }
 
-int CMyUSB::OnParaWrite()
+
+int CMyUSB::OnCmd1(u8 cmd, u8 slen, u8* sbuf, u8 rlen, u8* rbuf)
 {
 	int rev;
 	EnterCriticalSection(&m_cs);
-	rev = OnParaWrite_0();
+	rev = OnCmd1_USB(cmd, slen, sbuf, rlen, rbuf);
 	LeaveCriticalSection(&m_cs);
 	return rev;
 }
 
-int CMyUSB::OnParaWrite_0()
+int CMyUSB::OnCmd1_USB(u8 cmd, u8 slen, u8* sbuf, u8 rlen, u8* rbuf)
 {
-//命令格式: 长度(1B) + 命令头ZHKJ(4B) + CMD_READ_WITE 
-//返回值: -1 命令失败,0 命令成功
 	char buff[64];
-	int ret=0;
 	int i;
-	buff[0] = MAC_PARA_SIZE+6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_PARA_WRITE;
+	buff[0] = slen+2;
+	buff[1] = cmd;
+	for (i=0;i<slen;i++)
+	{
+		buff[i+2] = sbuf[i];
+	}
 
-	for (i=0;i<MAC_PARA_SIZE;i++)
+	if (((int)buff[0]) != (USBWrite(&buff[0], buff[0])))
 	{
-		buff[i+6] = gTempPara.charBuff[i];
+		return -1;
 	}
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
+	if (UsbRead((char*)rbuf, rlen) != rlen)
 	{
-		return -1; 
+		return -1;
 	}
-	if( Read(buff,64) != 1)
+	if (rlen == 1)
 	{
-		return -2;
+		gSysState = rbuf[0];
 	}
-	return buff[0];
-}
-
-int CMyUSB::OnGetMacState()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnGetMacState_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnGetMacState_0()
-{
-	//命令格式: 长度(1B) + 命令头ZHKJ(4B) + CMD_READ_WITE 
-	//返回值: -1 命令失败,0 命令成功
-	char buff[64];
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_GET_STATE;
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 2)
-	{
-		return -2;
-	}
-	gSysState = buff[0];
-	gWorkType = buff[1]; //工作类型
 	return 0;
 }
-
-int CMyUSB::OnPumpCtrl(BOOL b)
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnPumpCtrl_0(b);
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-//X像素,包总数
-int CMyUSB::OnPumpCtrl_0(BOOL b)
-{
-	char buff[64];
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	if (b)	{
-		buff[5] = CMD_PUMP_ON;
-	}else{
-		buff[5] = CMD_PUMP_OFF;
-	}
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnCutDown(u8 CutPwm)
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnCutDown_0(CutPwm);
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnCutDown_0(u8 CutPwm)
-{
-	char buff[64];
-	buff[0] = 7;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_CUT_DOWN;
-	buff[6] = CutPwm;
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnSysReset()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnSysReset_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnSysReset_0()
-{
-	char buff[64];
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_SYS_RST;
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnSetZp()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnSetZp_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnSetZp_0()
-{
-	char buff[64];
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_SET_ZP;
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnToDefZp()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnToDefZp_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnToDefZp_0()
-{
-	char buff[64];
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_TO_DEFZP;
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnSpClean()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnSpClean_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnSpClean_0()
-{
-	char buff[64];
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_SPCLEAN;
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnWorkCmdStart(int XSizeCut,int YSizeCut,int nPackSum,int YPixPlot,u8 Pause)
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnWorkCmdStart_0(XSizeCut, YSizeCut, nPackSum, YPixPlot, Pause);
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnWorkCmdStart_0(int XSizeCut,int YSizeCut,int nPackSum,int YPixPlot,u8 Pause)
-{
-	char buff[64];
-	int i;
-	UNION_U8U32 u832Temp;
-	buff[0] = 23;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = WORKCMD_START;
-
-	u832Temp.u32buff = XSizeCut;
-	for (i=0;i<4;i++)
-	{
-		buff[6+i] = u832Temp.u8buff[i];
-	}
-	u832Temp.u32buff = YSizeCut;
-	for (i=0;i<4;i++)
-	{
-		buff[10+i] = u832Temp.u8buff[i];
-	}
-	u832Temp.u32buff = nPackSum;
-	for (i=0;i<4;i++)
-	{
-		buff[14+i] = u832Temp.u8buff[i];
-	}
-
-	u832Temp.u32buff = YPixPlot;
-	for (i=0;i<4;i++)
-	{
-		buff[18+i] = u832Temp.u8buff[i];
-	}
-	buff[22] = Pause;
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnWorkCtrl(u8 CtrlType)
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnWorkCtrl_0(CtrlType);
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnWorkCtrl_0(u8 CtrlType)
-{
-	char buff[64];
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CtrlType;
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -1;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnWorkCmdPlot(int nPackNum,u8 dir)
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnWorkCmdPlot_0(nPackNum,dir);
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnWorkCmdPlot_0(int nPackNum,u8 dir)
-{
-	char buff[64];
-	int i;
-	UNION_U8U32 u832Temp;
-	buff[0] = 11;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = WORKCMD_PLOT;
-	
-	u832Temp.u32buff = nPackNum;
-	for (i=0;i<4;i++)
-	{
-		buff[6+i] = u832Temp.u8buff[i];
-	}
-	buff[10] = dir;
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnWorkCmdCut(int nCutSum)
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnWorkCmdCut_0(nCutSum);
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnWorkCmdCut_0(int nCutSum)
-{
-	char buff[64];
-	UNION_U8U32 u832Temp;
-	int i;
-	buff[0] = 10;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = WORKCMD_CUT;
-	u832Temp.u32buff = nCutSum;
-	for(i=0;i<4;i++)
-	{
-		buff[6+i] = u832Temp.u8buff[i];
-	}
-
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnResetRcvAddr()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnResetRcvAddr_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnResetRcvAddr_0()
-{
-	char buff[64];
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = RESET_RCV_ADDR;
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnSendUsbKeyValue(u8 KeyVal)
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnSendUsbKeyValue_0(KeyVal);
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnSendUsbKeyValue_0(u8 KeyVal)
-{
-	char buff[64];
-	buff[0] = 7;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = USB_DEMO_KEY;
-	buff[6] = KeyVal;
-
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnGetChipID()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnGetChipID_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnGetChipID_0()
-{
-	UNION_U8U32 temp;
-	char buff[64];
-	
-	buff[0] = 7;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_GET_CHIPID;
-	buff[6] = 0x60; //可变地址 防止破解 
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 4)
-	{
-		return -1;
-	}
-	for (int i=0;i<4;i++)
-	{
-		temp.u8buff[i] = buff[i];
-	}
-
-	return temp.u32buff;
-}
-
-int CMyUSB::OnEraseMcuFlash()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnEraseMcuFlash_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnEraseMcuFlash_0()
-{
-	char buff[64];
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_ERASE;
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnSetLastTime(u32 Time)
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnSetLastTime_0(Time);
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnSetLastTime_0(u32 Time)
-{
-	char buff[64];
-	UNION_U8U32 u832temp;
-	u832temp.u32buff = Time;
-	buff[0] = 10;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_SET_LAST_TIME;
-
-	buff[6] = u832temp.u8buff[0];
-	buff[7] = u832temp.u8buff[1];
-	buff[8] = u832temp.u8buff[2];
-	buff[9] = u832temp.u8buff[3];
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnGetLastTime()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnGetLastTime_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnGetLastTime_0()
-{
-	UNION_U8U32 temp;
-	char buff[64];
-	
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_GET_LAST_TIME;
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 4)
-	{
-		return -1;
-	}
-	for (int i=0;i<4;i++)
-	{
-		temp.u8buff[i] = buff[i];
-	}
-	return temp.u32buff;
-}
-
-int CMyUSB::OnSetDeblockCode(u32 debCode)
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnSetDeblockCode_0(debCode);
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnSetDeblockCode_0(u32 debCode)
-{
-	char buff[64];
-	UNION_U8U32 u832temp;
-	u832temp.u32buff = debCode;
-	buff[0] = 10;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_SET_DEB_CODE;
-	
-	buff[6] = u832temp.u8buff[0];
-	buff[7] = u832temp.u8buff[1];
-	buff[8] = u832temp.u8buff[2];
-	buff[9] = u832temp.u8buff[3];
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 1)
-	{
-		return -2;
-	}
-	return buff[0];
-}
-
-int CMyUSB::OnGetDeblockCode()
-{
-	int rev;
-	EnterCriticalSection(&m_cs);
-	rev = OnGetDeblockCode_0();
-	LeaveCriticalSection(&m_cs);
-	return rev;
-}
-
-int CMyUSB::OnGetDeblockCode_0()
-{
-	UNION_U8U32 temp;
-	char buff[64];
-	
-	buff[0] = 6;
-	strncpy(&buff[1],CMD_HEAD,4);
-	buff[5] = CMD_GET_DEB_CODE;
-	
-	if ( ((int)buff[0] ) != (WriteCmd(&buff[0],buff[0]) ) )
-	{
-		return -1; //命令发送失败
-	}
-	if( Read(buff,64) != 4)
-	{
-		return -1;
-	}
-	for (int i=0;i<4;i++)
-	{
-		temp.u8buff[i] = buff[i];
-	}
-	return temp.u32buff;
-}
-

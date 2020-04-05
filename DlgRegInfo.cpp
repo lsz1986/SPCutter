@@ -59,10 +59,9 @@ BOOL CDlgRegInfo::OnInitDialog()
 	GetDlgItem(IDCE_CODE)->ShowWindow(SW_HIDE);
 	GetDlgItem(IDC_TXT1)->ShowWindow(SW_HIDE);
 	GetDlgItem(IDC_TXT2)->ShowWindow(SW_HIDE);
-	GetDlgItem(IDC_TXT3)->ShowWindow(SW_HIDE);
 	GetDlgItem(IDCB_INPUT_REGCODE)->ShowWindow(SW_HIDE);
-	m_strAuthCode = gMacSet.getAuthCode();
-	m_strAuthSn = gMacSet.getMcuSn();
+	m_strAuthCode = gSet.getAuthCode();
+	m_strAuthSn = gSet.getMcuSn();
 
 	UpdateData(FALSE);
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -91,7 +90,6 @@ void CDlgRegInfo::OnOK()  //输入密码，按确定按钮
 		GetDlgItem(IDCE_CODE)->ShowWindow(SW_SHOW);
 		GetDlgItem(IDC_TXT1)->ShowWindow(SW_SHOW);
 		GetDlgItem(IDC_TXT2)->ShowWindow(SW_SHOW);
-		GetDlgItem(IDC_TXT3)->ShowWindow(SW_SHOW);
 		GetDlgItem(IDCB_INPUT_REGCODE)->ShowWindow(SW_SHOW);
 	}
 }
@@ -106,8 +104,8 @@ void CDlgRegInfo::OnInputRegCode()
 	{
 		CTime EndTime;
 		EndTime = gMyReg.m_nV2EndTime;
-		m_strEndDate.Format("授权结束时间:%d年%d月%d日",EndTime.GetYear(),EndTime.GetMonth(),EndTime.GetDay());
-		gMacSet.setAuthCode(m_strAuthCode);
+		m_strEndDate.Format("更新成功Code:%d-%d-%d",EndTime.GetMonth(),EndTime.GetDay(),EndTime.GetYear()-2000);
+		gSet.setAuthCode(m_strAuthCode);
 	}
 	else
 	{

@@ -21,7 +21,6 @@ CDlgSetClr::CDlgSetClr(CWnd* pParent /*=NULL*/)
 	//{{AFX_DATA_INIT(CDlgSetClr)
 	m_bDisplayDirection = FALSE;
 	m_bDisplaySequence = FALSE;
-	m_bListDispLeft = FALSE;
 	m_nDispSizeX = 1200;
 	m_nDispSizeY = 900;
 	//}}AFX_DATA_INIT
@@ -38,7 +37,6 @@ void CDlgSetClr::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDCB_CLR_BLADE, m_btnBlade);
 	DDX_Check(pDX, IDCHK_DISPLAY_DIR, m_bDisplayDirection);
 	DDX_Check(pDX, IDCHK_DISPLAY_NUM, m_bDisplaySequence);
-	DDX_Check(pDX, IDCHK_DISPLIST_LEFT, m_bListDispLeft);
 	DDX_Text(pDX, IDCE_DISP_SIZEX, m_nDispSizeX);
 	DDV_MinMaxUInt(pDX, m_nDispSizeX, 1200, 4000);
 	DDX_Text(pDX, IDCE_DISP_SIZEY, m_nDispSizeY);
@@ -77,10 +75,8 @@ BOOL CDlgSetClr::OnInitDialog()
 	m_btnBlade.SetActiveBgColor(gDispSet.getClrCut());
 	m_btnBlade.SetInactiveBgColor(gDispSet.getClrCut());
 
-	m_bDisplayDirection = gMacSet.getDisplayStartAndDir();
-	m_bDisplaySequence = gMacSet.getDisplaySequence();
-
-	m_bListDispLeft = gMacSet.getListDispLeft();
+	m_bDisplayDirection = gSet.getDisplayStartAndDir();
+	m_bDisplaySequence = gSet.getDisplaySequence();
 
 	m_nDispSizeX = gDispSet.getDispSizeX();
 	m_nDispSizeY = gDispSet.getDispSizeY();
@@ -100,21 +96,11 @@ void CDlgSetClr::OnOK()
 	gDispSet.setClrPen(m_btnPen.GetActiveBgColor());
 	gDispSet.setClrCut(m_btnBlade.GetActiveBgColor());
 
-	gMacSet.setDisplayStartAndDir(m_bDisplayDirection);
-	gMacSet.setDisplaySequence(m_bDisplaySequence);
+	gSet.setDisplayStartAndDir(m_bDisplayDirection);
+	gSet.setDisplaySequence(m_bDisplaySequence);
 
 	gDispSet.setDispSizeX(m_nDispSizeX);
 	gDispSet.setDispSizeY(m_nDispSizeY);
-
-	if( gMacSet.getListDispLeft() != m_bListDispLeft )
-	{
-		gMacSet.setListDispLeft(m_bListDispLeft);
-		if (gDispSet.getLanguage() == 0){
-			AfxMessageBox("你已改变了列表的显示位置，需要重启程序才能生效");
-		}else{
-			AfxMessageBox("Restart Application To Change List Display position");
-		}
-	}
 	CDialog::OnOK();
 }
 

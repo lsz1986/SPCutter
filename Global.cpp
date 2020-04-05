@@ -1,25 +1,25 @@
 #include "StdAfx.h"
 #include "Global.h"
 
-CSetMac gMacSet; //全局变量
+CSettings gSet; //全局变量
 CSetDisp gDispSet;
-ST_CNC_SPD_LIMIT gSpdLimit;
 
 CMyReg gMyReg;
 
 ST_MAC_PARA gPara;
-UNION_MAC_PARA gTempPara;
 
 u8 gSysState;
 u8 gWorkType; //工作类型
 
 STRUCT_REG_INFO gRegInfo;
-
+u32 gMcuCode;
 CString strZHKJ="ZHKJ";
 
 BOOL g_bParaRead = FALSE;
 COnePage gWorkingPage;
-CMyUSB gUSB;
+CMyCommu gCommu;
+CMyUSB gMyUSB;
+CMyEth gMyEth;
 
 long IntRound(double x)
 {
@@ -69,11 +69,16 @@ int ftoi(double f)
 
 int ReadMacPara()
 {
-	g_bParaRead = FALSE;
-	if(0 == gUSB.OnParaRead()) //参数读取成功
+	int rev;
+	u8 sbuf[64];
+	u8 rbuf[64];
+	sbuf[0] = MAC_PARA_SIZE; //YHZ注，这个参数实际没有用到，仅仅为了区分CMD0
+	rev = gCommu.OnCmd1(CMD1_PARA_READ, 1, sbuf, MAC_PARA_SIZE, rbuf);
+	if (0 == rev) //参数读取成功
 	{
 		g_bParaRead = TRUE;
-		gPara = gTempPara.stBuff;
+
+		gPara = *((ST_MAC_PARA*)(&rbuf[0]));
 		gParaTogSet();
 		return 0;
 	}
@@ -83,108 +88,122 @@ int ReadMacPara()
 void gParaTogSet()
 {
 //------------------------------高级参数-----------------------------		
-	gMacSet.setPPMMX(gPara.m_dPPMM_X);
-	gMacSet.setPPMMY(gPara.m_dPPMM_Y);
-	gMacSet.setMacSizeX(gPara.m_sMacSizeXmm);
-	gMacSet.setMacSizeY(gPara.m_sMacSizeYmm);
-	gMacSet.setSpAccStep(gPara.m_sSpAccStep);
-	gMacSet.setSpdCut(gPara.m_cSpdCut);
-	gMacSet.setSpdMove(gPara.m_cSpdMove);
+	gSet.setPPMMX(gPara.m_dPPMM_X);
+	gSet.setPPMMY(gPara.m_dPPMM_Y);
+	gSet.setMachineIpAddr(gPara.m_nW5500Ip);
+
+	gSet.setMacSizeX(gPara.m_sMacSizeXmm);
+	gSet.setMacSizeY(gPara.m_sMacSizeYmm);
+	gSet.setSpAccDistmm(gPara.m_cSpAccDistMm);
+	gSet.setSpdCut(gPara.m_cSpdCut);
+	gSet.setSpdMove(gPara.m_cSpdMove);
+	gSet.setSecLen(gPara.m_cSecLen);
 //------------------------------高级参数-----------------------------		
 
 //------------------------------普通参数-----------------------------		
-	gMacSet.setPwmKStart(gPara.m_cPwmKStart);
-	gMacSet.setPwmKWork(gPara.m_cPwmKWork);
+	gSet.setPwmKStart(gPara.m_cPwmKStart);
+	gSet.setPwmKWork(gPara.m_cPwmKWork);
 	
-	gMacSet.setCutEndPosYmm(gPara.m_sCutEndPosYmm);
-	gMacSet.setAngleAdjust(gPara.m_cAngleAdjust);
-	gMacSet.setKPDistX(gPara.m_cKPDistX);
-	gMacSet.setKPDistY(gPara.m_cKPDistY);
+	gSet.setCutPaperStartYmm(gPara.m_sCutPaperStartYmm);
+	gSet.setCutPaperEndYmm(gPara.m_sCutPaperEndYmm);
+	gSet.setAngleAdjust(gPara.m_cAngleAdjust);
+	gSet.setKPDistX(gPara.m_cKPDistX);
+	gSet.setKPDistY(gPara.m_cKPDistY);
 	
-	gMacSet.set10000X(gPara.m_s10000X);
-	gMacSet.set10000Y(gPara.m_s10000Y);
+	gSet.set10000X(gPara.m_s10000X);
+	gSet.set10000Y(gPara.m_s10000Y);
 	
-	gMacSet.setSP1DOTLR(gPara.m_cSp1DotLR);
-	gMacSet.setSP2DOTLR(gPara.m_cSp2DotLR);
+	gSet.setSP1DOTLR(gPara.m_cSp1DotLR);
+	gSet.setSP2DOTLR(gPara.m_cSp2DotLR);
 	
-	gMacSet.setJobEndHeadPos(gPara.m_cJobEndHeadPos);
-	gMacSet.setJobEndPosXmm(gPara.m_sJobEndPosXmm);
-	gMacSet.setJobEndPosYmm(gPara.m_sJobEndPosYmm);
+	gSet.setJobEndHeadPos(gPara.m_cJobEndHeadPos);
+	gSet.setJobEndPosXmm(gPara.m_sJobEndPosXmm);
+	gSet.setJobEndPosYmm(gPara.m_sJobEndPosYmm);
 
-	gMacSet.setSpStat(gPara.m_cSpStat);
-	gMacSet.setSpType(gPara.m_cSpType); //设置墨盒类型
+	gSet.setSpStat(gPara.m_cSpStat);
+	gSet.setSpType(gPara.m_cSpType); //设置墨盒类型
 
-	gMacSet.setSpEX(gPara.m_cSpEX); //喷头重叠
-	gMacSet.setSp12EY(gPara.m_cSp12Y); //喷头间距
-	gMacSet.setJamDetect(gPara.m_cJamDetect); //双向打印
-	gMacSet.setSpdDownType(gPara.m_cLowSpdMode);
-	
-	gMacSet.setSpDDY(gPara.m_cYLRError); //双向误差
-	gMacSet.setPPDOTY(gPara.m_cPPDOT_Y); //喷墨间隔脉冲
-	gMacSet.setLedLan(gPara.m_cLedLan);
+	gSet.setSpEX(gPara.m_cSpEX); //喷头重叠
+	gSet.setSp12EY(gPara.m_cSp12Y); //喷头间距
+	gSet.setJamDetect(gPara.m_cJamDetect); //双向打印
+
+	gSet.setSpDDY(gPara.m_cYLRError); //双向误差
+	gSet.setPPDOTY(gPara.m_cPPDOT_Y); //喷墨间隔脉冲
+	gSet.setLedLan(gPara.m_cLedLan);
 	return;
 }
 
 void gSetTogPara()
 {
 //double-------------------------------------------------------
-	gPara.m_dPPMM_X = gMacSet.getPPMMX();
-	gPara.m_dPPMM_Y = gMacSet.getPPMMY();
+	gPara.m_dPPMM_X = gSet.getPPMMX();
+	gPara.m_dPPMM_Y = gSet.getPPMMY();
+
+//short-4bytes---------------------------
+	gPara.m_nW5500Ip = gSet.getMachineIpAddr();
+
 //unsigned short------------------------------------------------
-	gPara.m_s10000X = gMacSet.get10000X();
-	gPara.m_s10000Y = gMacSet.get10000Y();
-	gPara.m_sSpAccStep = gMacSet.getSpAccStep();
-	gPara.m_sMacSizeXmm = gMacSet.getMacSizeX();
-	gPara.m_sMacSizeYmm = gMacSet.getMacSizeY();
+	gPara.m_s10000X = gSet.get10000X();
+	gPara.m_s10000Y = gSet.get10000Y();
+	gPara.m_cSpAccDistMm = gSet.getSpAccDistmm();
+	gPara.m_sMacSizeXmm = gSet.getMacSizeX();
+	gPara.m_sMacSizeYmm = gSet.getMacSizeY();
 
-	gPara.m_sCutEndPosYmm = gMacSet.getCutEndPosYmm();
-	gPara.m_sJobEndPosXmm = gMacSet.getJobEndPosXmm();
-	gPara.m_sJobEndPosYmm = gMacSet.getJobEndPosYmm();
+	gPara.m_sCutPaperStartYmm = gSet.getCutPaperStartYmm();
+	gPara.m_sCutPaperEndYmm = gSet.getCutPaperEndYmm();
+
+	gPara.m_sJobEndPosXmm = gSet.getJobEndPosXmm();
+	gPara.m_sJobEndPosYmm = gSet.getJobEndPosYmm();
 
 //unsigned char 10byte------------------------------------------
-	gPara.m_cKPDistX = gMacSet.getKPDistX();
-	gPara.m_cKPDistY = gMacSet.getKPDistY();
+	gPara.m_cKPDistX = gSet.getKPDistX();
+	gPara.m_cKPDistY = gSet.getKPDistY();
 
-	gPara.m_cPwmKStart = gMacSet.getPwmKStart();
-	gPara.m_cPwmKWork =  gMacSet.getPwmKWork();
+	gPara.m_cPwmKStart = gSet.getPwmKStart();
+	gPara.m_cPwmKWork =  gSet.getPwmKWork();
 
-	gPara.m_cSp12Y = gMacSet.getSp12EY(); //喷头间距
-	gPara.m_cJamDetect = gMacSet.getJamDetect(); //喷墨时卡纸检测
-	gPara.m_cLowSpdMode = gMacSet.getSpdDownType(); //慢速模式
+	gPara.m_cSp12Y = gSet.getSp12EY(); //喷头间距
+	gPara.m_cJamDetect = gSet.getJamDetect(); //喷墨时卡纸检测
 
-	gPara.m_cSp1DotLR = gMacSet.getSP1DOTLR();
-	gPara.m_cSp2DotLR = gMacSet.getSP2DOTLR();
+	gPara.m_cSp1DotLR = gSet.getSP1DOTLR();
+	gPara.m_cSp2DotLR = gSet.getSP2DOTLR();
 //unsigned char 10byte------------------------------------------
-	gPara.m_cSpdMove = gMacSet.getSpdMove();
-	gPara.m_cSpdCut = gMacSet.getSpdCut();
-	gPara.m_cYLRError = gMacSet.getSpDDY(); //双向误差
-	gPara.m_cSpStat = gMacSet.getSpStat();
-	gPara.m_cSpType =  gMacSet.getSpType(); //墨盒类型 
+	gPara.m_cSpdMove = gSet.getSpdMove();
+	gPara.m_cSpdCut = gSet.getSpdCut();
+	gPara.m_cYLRError = gSet.getSpDDY(); //双向误差
+	gPara.m_cSpStat = gSet.getSpStat();
+	gPara.m_cSpType =  gSet.getSpType(); //墨盒类型 
 
-	gPara.m_cSpEX = gMacSet.getSpEX(); //喷头重叠
-	gPara.m_cAngleAdjust = gMacSet.getAngleAdjust();
-	gPara.m_cJobEndHeadPos = gMacSet.getJobEndHeadPos();
+	gPara.m_cSpEX = gSet.getSpEX(); //喷头重叠
+	gPara.m_cAngleAdjust = gSet.getAngleAdjust();
+	gPara.m_cJobEndHeadPos = gSet.getJobEndHeadPos();
 	gPara.m_cPPDOT_Y = 18;
-	gPara.m_cLedLan = gMacSet.getLedLan();
+	gPara.m_cSecLen = gSet.getSecLen();
+	gPara.m_cLedLan = gSet.getLedLan();
 	return;
 }
 
 void WritePlotPara()
 {
-	if (FALSE == g_bParaRead)
-	{
-		return;
-	}
+	int rev;
+	u8 sbuf[64];
+	u8 rbuf[64];
 	gSetTogPara();
-	gTempPara.stBuff = gPara;
-	if(0 != gUSB.OnParaWrite() )
+
+	*((ST_MAC_PARA*)(&sbuf[0])) = gPara;
+	rev = gCommu.OnCmd1(CMD1_PARA_WRITE, MAC_PARA_SIZE, sbuf, 1, rbuf);
+	if (0 != rev)
 	{
-		if (gDispSet.getLanguage() == 0) {
+		if (gDispSet.getLanguage() == 0)
+		{
 			AfxMessageBox("保存参数失败!");
-		}else {
+		}
+		else
+		{
 			AfxMessageBox("Failed To Save Parameter!");
 		}
 	}
+	Sleep(300);
 }
 
 void delayus(int num)
@@ -228,74 +247,15 @@ const UINT YHZIntArray[16] = {
 CPoint ptHpglToScr(CPoint ptHpgl)
 {
 	CPoint ptScr;
-	ptScr.x = (int)(ptHpgl.x*gDispSet.getDispScale())+DISP_START_X - gDispSet.getDispStartX();
-	ptScr.y = (int)(gDispSet.getScrYPixel()-ptHpgl.y*gDispSet.getDispScale())-DISP_START_Y - gDispSet.getDispStartY();
+	ptScr.x = (int)( ptHpgl.x*gDispSet.getDispScale()+DISP_START_X - gDispSet.getDispStartX() );
+	ptScr.y = (int)( gDispSet.getScrYPixel()-ptHpgl.y*gDispSet.getDispScale()-DISP_START_Y - gDispSet.getDispStartY() );
 	return ptScr;
 }
 
-void setSpdLimit(int nLowSpdMode)
+CPoint ptScrToHpgl(CPoint ptScr)
 {
-	switch(nLowSpdMode)
-	{
-		case 1:
-		gSpdLimit.m_spdMax = 2800;
-		gSpdLimit.m_spdLV1 = 200;
-		gSpdLimit.m_spdLV2_R002 = 250;
-		gSpdLimit.m_spdLV3_R004 = 300;
-		gSpdLimit.m_spdLV4_R005 = 350;
-		gSpdLimit.m_spdLV5_R010 = 400;
-		gSpdLimit.m_spdLV6_R020 = 450;
-		gSpdLimit.m_spdLV7_R050 = 500;
-		gSpdLimit.m_spdLV8_R100 = 600;
-		gSpdLimit.m_spdLV9_R150 = 800;
-		gSpdLimit.m_spdLV10_R200 = 1000;
-		gSpdLimit.m_spdLV11_R300 = 1200;
-		break;
-
-		case 2:
- 		gSpdLimit.m_spdMax = 1000;
- 		gSpdLimit.m_spdLV1 = 150;
- 		gSpdLimit.m_spdLV2_R002 = 160;
- 		gSpdLimit.m_spdLV3_R004 = 200;
- 		gSpdLimit.m_spdLV4_R005 = 240;
- 		gSpdLimit.m_spdLV5_R010 = 280;
- 		gSpdLimit.m_spdLV6_R020 = 320;
- 		gSpdLimit.m_spdLV7_R050 = 360;
- 		gSpdLimit.m_spdLV8_R100 = 400;
- 		gSpdLimit.m_spdLV9_R150 = 450;
- 		gSpdLimit.m_spdLV10_R200 = 500;
- 		gSpdLimit.m_spdLV11_R300 = 600;
-		break;
-
-		case 3:
-		gSpdLimit.m_spdMax = 360;
-		gSpdLimit.m_spdLV1 = 120;
-		gSpdLimit.m_spdLV2_R002 = 140;
-		gSpdLimit.m_spdLV3_R004 = 160;
-		gSpdLimit.m_spdLV4_R005 = 180;
-		gSpdLimit.m_spdLV5_R010 = 200;
-		gSpdLimit.m_spdLV6_R020 = 220;
-		gSpdLimit.m_spdLV7_R050 = 240;
-		gSpdLimit.m_spdLV8_R100 = 260;
-		gSpdLimit.m_spdLV9_R150 = 280;
-		gSpdLimit.m_spdLV10_R200 = 300;
- 		gSpdLimit.m_spdLV11_R300 = 320;
-		break;
-	
-		default:
-		gSpdLimit.m_spdMax = 4000;
-		gSpdLimit.m_spdLV1 = 300;
-		gSpdLimit.m_spdLV2_R002 = 400;
-		gSpdLimit.m_spdLV3_R004 = 480;
-		gSpdLimit.m_spdLV4_R005 = 560;
-		gSpdLimit.m_spdLV5_R010 = 640;
-		gSpdLimit.m_spdLV6_R020 = 720;
-		gSpdLimit.m_spdLV7_R050 = 800;
-		gSpdLimit.m_spdLV8_R100 = 1000;
-		gSpdLimit.m_spdLV9_R150 = 1200;
-		gSpdLimit.m_spdLV10_R200 = 1400;
-		gSpdLimit.m_spdLV11_R300 = 1600;
-		break;
-	}
-	return;
+	CPoint ptHpgl;
+	ptHpgl.x = (int)( (ptScr.x + gDispSet.getDispStartX() - DISP_START_X) / gDispSet.getDispScale());
+	ptHpgl.y = (int)( (gDispSet.getScrYPixel() - ptScr.y - gDispSet.getDispStartY() - DISP_START_Y) / gDispSet.getDispScale());
+	return ptHpgl;
 }

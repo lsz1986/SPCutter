@@ -28,27 +28,21 @@
 #include <math.h>
 #define PI 3.14159265359
 
-#define TYPE_END		0x10
-#define TYPE_MOVE		0x20
-#define TYPE_CUT		0x40
+#define TYPE_END		'E'
+#define TYPE_MOVE		'M'
+#define TYPE_CUT		'C'
 
 #define OVERCUT_ANGLE  45.0 //角度补偿用
 //-------------20150411------------
-#define SD_LV0_ANGLE 16.8  //(大于16.8度)降速到等级0
-#define SD_LV1_ANGLE 7.0  //(8.0~16.8)降速到等级1
+//#define SD0_ANGLE  15.0		//降速到0
+#define SD0_ANGLE  15.0		//降速到0 20161205
+#define SD5_ANGLE  7.5		//降速到5
+#define CURVE_ANGLE	 4.0	//判断是否为弧线
+#define MAX_SPD 160
+//#define CURVE_SPD 8
+#define SD5_SPD 5
 
-#define CURVATURE_R002 100.0
-#define CURVATURE_R004 45.0
-#define CURVATURE_R005 36.0
-#define CURVATURE_R010 18.0
-#define CURVATURE_R020 9.0
-#define CURVATURE_R050 3.6
-#define CURVATURE_R100 1.8
-#define CURVATURE_R150 1.13
-#define CURVATURE_R200 1.0
-#define CURVATURE_R300 0.6
-
-#define CNC_DATA_SIZE 16
+#define CNC_DATA_SIZE 12
 #define SOFT_BIRTH_TIME 1405932800
 
 #define SPLR_DOT_MAX 30 //喷头左右两列之间的点数
@@ -61,9 +55,12 @@
 #define  DISP_START_X  20
 #define  DISP_START_Y  30
 
-#define C_GM 1
-#define C_ALL 0
-#define CUSTOMER_TYPE C_ALL
+#define KP_XXX	(-2207) //IUT308
+#define KP_YYY	(-3440)
+
+#define C_GM (1)
+#define C_ALL (0)
+#define CUSTOMER_TYPE C_GM
 
 #define YHZ_DEBUG 0
 #pragma warning(disable:4996)

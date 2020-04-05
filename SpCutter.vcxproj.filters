@@ -33,9 +33,6 @@
     <ClCompile Include="DlgMacPara.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DlgManCtrl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DlgProtectPara.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -70,9 +67,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="IUT308_SpBCtrl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MacSet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MainFrm.cpp">
@@ -120,6 +114,24 @@
     <ClCompile Include="ThreadTimeDetect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BtnST.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BCMenu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Settings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgPwdInput.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MyCommu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MyEth.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SpCutter.rc">
@@ -143,9 +155,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DlgMacPara.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DLgManCtrl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DlgProtectPara.h">
@@ -176,9 +185,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HyperLink.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MacSet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MainFrm.h">
@@ -217,7 +223,25 @@
     <ClInclude Include="Thread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="user_usb_cmd.h">
+    <ClInclude Include="zh_cmd_def.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BtnST.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BCMenu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgPwdInput.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MyCommu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MyEth.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -274,5 +298,37 @@
       <Filter>Resource Files</Filter>
     </CustomBuild>
     <CustomBuild Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\IconDown.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconLeft.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconRight.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconUp.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconSpClean.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconWorkCancel.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconWorkPause.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconWorkStart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconZpSet.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\IconZpToDef.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

@@ -21,12 +21,13 @@ int SendCncData()
 		unionCncData[nIndex].stBuff.m_iX = pCncData->m_iX;
 		unionCncData[nIndex].stBuff.m_iY = pCncData->m_iY;
 		unionCncData[nIndex].stBuff.m_nMaxSpeed = pCncData->m_nMaxSpeed;
-		unionCncData[nIndex].stBuff.m_nEndSpeed = pCncData->m_nEndSpeed;
-		unionCncData[nIndex].stBuff.m_nCmdType = pCncData->m_nCmdType;
-		unionCncData[nIndex].stBuff.m_nDccPerCent = (u16)( pCncData->m_dDccPerCent * 4096.0 );
+		unionCncData[nIndex].stBuff.m_nEndSpeed = pCncData->m_nMaxEndSpeed;
+		unionCncData[nIndex].stBuff.m_cCmdType = pCncData->m_cCmdType;
+		unionCncData[nIndex].stBuff.m_cNull = 0;
+		
 	}
 	ZipCncData();
-	if (gUSB.WriteBulk((char*)(&g_ZippedCncData),g_iCncDataSizeZipped) != g_iCncDataSizeZipped)
+	if (gCommu.WriteBulk((char*)(&g_ZippedCncData),g_iCncDataSizeZipped) != g_iCncDataSizeZipped)
 	{
 		return -1;
 	}
@@ -89,6 +90,47 @@ void ZipCncData()
 	g_iCncDataSizeZipped = j*2;
 }
 
+void RemoveDupPoints()
+{
+	int i;
+	ST_CNC_DATA_ALL *pCncData1;
+	ST_CNC_DATA_ALL *pCncData2;
+	ST_CNC_DATA_ALL *pCncData3;
+	ST_CNC_DATA_ALL *pCncData4;
+	int nSize;
+	nSize = g_ptrCncList.GetSize();
+	for (i = 1; i < nSize-4; i++)
+	{
+		pCncData1 = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
+		pCncData2 = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 1);
+		pCncData3 = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 2);
+		pCncData4 = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i + 3);
+		if ((pCncData1->m_cCmdType == TYPE_CUT)
+			&& (pCncData2->m_cCmdType == TYPE_CUT)
+			&& (pCncData3->m_cCmdType == TYPE_CUT)
+			&& (pCncData4->m_cCmdType == TYPE_CUT)
+			)
+		{
+			if (   (pCncData2->m_nLongAxialStep < 50)
+				&& (pCncData3->m_nLongAxialStep < 50)
+				&& (pCncData4->m_nLongAxialStep < 50)
+				)
+			{
+				pCncData4->m_iDeltaX = pCncData4->m_iX - pCncData2->m_iX;
+				pCncData4->m_iDeltaY = pCncData4->m_iY - pCncData2->m_iY;
+
+				pCncData4->m_nLongAxialStep =
+				(abs(pCncData4->m_iDeltaX) > abs(pCncData4->m_iDeltaY)) ?
+					abs(pCncData4->m_iDeltaX) : abs(pCncData4->m_iDeltaY);
+				g_ptrCncList.RemoveAt(i+2);
+
+				nSize--;
+			}
+
+		}
+
+	}
+}
 
 void CalculateAngles()
 {
@@ -97,7 +139,7 @@ void CalculateAngles()
 	int iLastX,iLastY;
 	double dLastAngle;
 	int nSize;
-	nSize =g_ptrCncList.GetSize();
+	nSize = g_ptrCncList.GetSize();
 	if (nSize == 0)
 	{
 		return;
@@ -156,348 +198,58 @@ void GetLongAxialSteps()
 	}
 }
 
-void CalcCurvature()
-{
-	int i;
-	ST_CNC_DATA_ALL *pCncData;
-	double dX,dY,dR;
-
-	int nSize;
-	nSize =g_ptrCncList.GetSize();
-	if (nSize == 0)
-	{
-		return;
-	}
-	pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(0);
-	pCncData->m_dCurvature = 0;
-
-	for (i=1;i<nSize;i++)
-	{
-		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
-		dX = pCncData->m_iDeltaX;
-		dY = pCncData->m_iDeltaY;
-		dR = sqrt(dX*dX+dY*dY);
-		if (dR == 0)
-		{
-			pCncData->m_dCurvature = 0;
-		}
-		else
-		{
-			pCncData->m_dCurvature = fabs(pCncData->m_dDeltaAngle)/( dR / gMacSet.getPPMMY() );
-			pCncData->m_dCurvature = pCncData->m_dCurvature*180.0;
-		}
-	}
-}
-
-void CalcSdPercent(void)
-{
-	int i,nSize;
-	ST_CNC_DATA_ALL *pCncData;
-	double dDeltaX,dDeltaY;
-	double dR;
-	nSize = g_ptrCncList.GetSize();
-	if (nSize == 0)
-	{
-		return;
-	}
-	for (i=0;i<nSize;i++)
-	{
-		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
-		dDeltaX = fabs((double)pCncData->m_iDeltaX);
-		dDeltaY = fabs((double)pCncData->m_iDeltaY);
-		dR = sqrt((double)(dDeltaX*dDeltaX+dDeltaY*dDeltaY));
-		if ( dDeltaX > dDeltaY )
-		{
-			if (dDeltaX == 0.0)
-			{
-				pCncData->m_dDccPerCent = 1.0;
-			}
-			else
-			{
-				pCncData->m_dDccPerCent = dR/dDeltaX;
-			}
-		}
-		else
-		{
-			if (dDeltaY == 0.0)
-			{
-				pCncData->m_dDccPerCent = 1.0;
-			}
-			else
-			{
-				pCncData->m_dDccPerCent = dR/dDeltaY;
-			}
-		}
-	}
-}
-
-void CalcCncSpeed(void)
-{
-	int i,nSize;
-	ST_CNC_DATA_ALL *pCncData;
-	ST_CNC_DATA_ALL *pCncDataNext;
-	nSize = g_ptrCncList.GetSize();
-	if (nSize == 0)
-	{
-		return;
-	}
-
-	pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(nSize-1);
-	pCncData->m_nEndSpeed = 0;
-	pCncData->m_nMaxSpeed = pCncData->m_nLongAxialStep;
-	if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdMax)
-	{
-		pCncData->m_nMaxSpeed = gSpdLimit.m_spdMax;
-	}
-
-	for (i=nSize-2;i>=0;i--) 
-	{
-		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
-		pCncDataNext = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i+1);
-		if (pCncDataNext->m_nCmdType == TYPE_MOVE) //下一条指令是移动
-		{
-			pCncData->m_nEndSpeed = 0;
-			pCncData->m_nMaxSpeed = pCncData->m_nLongAxialStep;
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdMax)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdMax;
-			}
-			continue;
-		}
-
-
-		if (fabs(pCncDataNext->m_dDeltaAngle*180.0/PI) > SD_LV0_ANGLE)
-		{
-			pCncData->m_nEndSpeed = 0;
-			pCncData->m_nMaxSpeed = pCncData->m_nLongAxialStep;
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdMax)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdMax;
-			}
-			continue;
-		}
-		else if (fabs(pCncDataNext->m_dDeltaAngle*180.0/PI) > SD_LV1_ANGLE)
-		{
-			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV1)
-			{
-				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV1;
-			}
-			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdMax)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdMax;
-			}
-			continue;
-		}
-		else if( pCncData->m_nLongAxialStep > (gMacSet.getCurveLen()*90) )
-		{
-			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdMax)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdMax;
-			}
-			continue;
-		}
-
-//		if (pCncDataNext->m_dCurvature > CURVATURE_R002 )
-		if (pCncDataNext->m_dCurvature > CURVATURE_R010 )
-		{
-			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV2_R002)
-			{
-				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV2_R002;
-			}
-			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV2_R002)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV2_R002;
-			}	
-		}
-// 		else if (pCncDataNext->m_dCurvature > CURVATURE_R004 )
-// 		{
-// 			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-// 			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV3_R004)
-// 			{
-// 				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV3_R004;
-// 			}
-// 			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-// 			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV3_R004)
-// 			{
-// 				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV3_R004;
-// 			}
-// 		}
-// 		else if (pCncDataNext->m_dCurvature > CURVATURE_R005 )
-// 		{
-// 			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-// 			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV4_R005)
-// 			{
-// 				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV4_R005;
-// 			}
-// 			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-// 			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV4_R005)
-// 			{
-// 				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV4_R005;
-// 			}
-// 		}
-// 		else if(pCncDataNext->m_dCurvature > CURVATURE_R010 )
-// 		{
-// 			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-// 			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV5_R010)
-// 			{
-// 				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV5_R010;
-// 			}
-// 			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-// 			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV5_R010)
-// 			{
-// 				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV5_R010;
-// 			}
-// 		}
-// 		else if(pCncDataNext->m_dCurvature > CURVATURE_R020 )
-// 		{
-// 			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-// 			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV6_R020)
-// 			{
-// 				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV6_R020;
-// 			}
-// 			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-// 			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV6_R020)
-// 			{
-// 				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV6_R020;
-// 			}
-// 		}
-// 		else if(pCncDataNext->m_dCurvature > CURVATURE_R050 )
-// 		{
-// 			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-// 			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV7_R050)
-// 			{
-// 				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV7_R050;
-// 			}
-// 			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-// 			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV7_R050)
-// 			{
-// 				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV7_R050;
-// 			}
-// 		}
-		else if(pCncDataNext->m_dCurvature > CURVATURE_R100 )
-		{
-			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV8_R100)
-			{
-				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV8_R100;
-			}
-			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV8_R100)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV8_R100;
-			}
-		}
-		else if(pCncDataNext->m_dCurvature > CURVATURE_R150 )
-		{
-			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV9_R150)
-			{
-				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV9_R150;
-			}
-			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV9_R150)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV9_R150;
-			}
-		}
-		else if(pCncDataNext->m_dCurvature > CURVATURE_R200 )
-		{
-			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV10_R200)
-			{
-				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV10_R200;
-			}
-			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV10_R200)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV10_R200;
-			}
-		}
-		else if(pCncDataNext->m_dCurvature > CURVATURE_R300 )
-		{
-			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdLV11_R300)
-			{
-				pCncData->m_nEndSpeed = gSpdLimit.m_spdLV11_R300;
-			}
-			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdLV11_R300)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdLV11_R300;
-			}
-		}
-		else
-		{
-			pCncData->m_nEndSpeed = pCncDataNext->m_nMaxSpeed;
-			if (pCncData->m_nEndSpeed > gSpdLimit.m_spdMax)
-			{
-				pCncData->m_nEndSpeed = gSpdLimit.m_spdMax;
-			}
-			pCncData->m_nMaxSpeed = (pCncData->m_nEndSpeed+pCncData->m_nLongAxialStep);
-			if (pCncData->m_nMaxSpeed > gSpdLimit.m_spdMax)
-			{
-				pCncData->m_nMaxSpeed = gSpdLimit.m_spdMax;
-			}
-		}
-	}
-}
-
 void AddOverCutData()
 {
 	int i;
 	int nDataSize = g_ptrCncList.GetSize();
+
 	ST_CNC_DATA_ALL* pCutData;
 	ST_CNC_DATA_ALL* pCutData1;
 	ST_CNC_DATA_ALL* pCutDataAdd;
 	
 	int iDeltaX,iDeltaY,iDeltaX1,iDeltaY1;
-	if (0 == gMacSet.getOverCutLen())
+	if (0 == gSet.getOverCutLen())
 	{
 		return;
 	}
+
 	for (i=1;i<nDataSize;i++)
 	{
 		pCutData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
 		pCutData1 = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i-1);
 		
-		if( (TYPE_MOVE == pCutData1->m_nCmdType) && (TYPE_CUT == pCutData->m_nCmdType) ) 
-			//是一段闭合曲线的起始 在此段数据之前后退 gMacSet.getOverCutLen()
+		if( (TYPE_MOVE == pCutData1->m_cCmdType) && (TYPE_CUT == pCutData->m_cCmdType) ) 
+			//是一段闭合曲线的起始 在此段数据之前后退 gSet.getOverCutLen()
 		{
 			//改变抬笔目标 (沿着反向移动)
-			iDeltaX = (int)( gMacSet.getOverCutLen() * cos(pCutData->m_dAngle) );
-			iDeltaY = (int)( gMacSet.getOverCutLen() * sin(pCutData->m_dAngle) );
+			iDeltaX = (int)( gSet.getOverCutLen() * cos(pCutData->m_dAngle) );
+			iDeltaY = (int)( gSet.getOverCutLen() * sin(pCutData->m_dAngle) );
 			pCutData1->m_iX = pCutData1->m_iX-iDeltaX;
 			pCutData1->m_iY = pCutData1->m_iY-iDeltaY;
 		}
-		else if ((TYPE_CUT == pCutData1->m_nCmdType) && (TYPE_MOVE == pCutData->m_nCmdType)) 
-			//是一段闭合曲线的结束 在此段数据之后前进 gMacSet.getOverCutLen()
+		else if ((TYPE_CUT == pCutData1->m_cCmdType) && (TYPE_MOVE == pCutData->m_cCmdType)) 
+			//是一段闭合曲线的结束 在此段数据之后前进 gSet.getOverCutLen()
 		{
-			iDeltaX = (int)(gMacSet.getOverCutLen() * cos(pCutData1->m_dAngle) );
-			iDeltaY = (int)(gMacSet.getOverCutLen() * sin(pCutData1->m_dAngle) );
+			iDeltaX = (int)(gSet.getOverCutLen() * cos(pCutData1->m_dAngle) );
+			iDeltaY = (int)(gSet.getOverCutLen() * sin(pCutData1->m_dAngle) );
 			pCutData1->m_iX = pCutData1->m_iX+iDeltaX;
 			pCutData1->m_iY = pCutData1->m_iY+iDeltaY;
 		}
-		else if((TYPE_CUT == pCutData1->m_nCmdType) && (TYPE_CUT == pCutData->m_nCmdType))
+		else if((TYPE_CUT == pCutData1->m_cCmdType) && (TYPE_CUT == pCutData->m_cCmdType))
 		{ //当前点的角度变化量
 			if( ( fabs(pCutData->m_dDeltaAngle*180/PI) > OVERCUT_ANGLE )	//是锐角
 				&& ( fabs(pCutData->m_dDeltaAngle*180/PI) < 120.0 )	) 
 
 			{
-				iDeltaX = (int)( gMacSet.getOverCutLen() * cos(pCutData1->m_dAngle) );
-				iDeltaY = (int)( gMacSet.getOverCutLen() * sin(pCutData1->m_dAngle) );
+				iDeltaX = (int)( gSet.getOverCutLen() * cos(pCutData1->m_dAngle) );
+				iDeltaY = (int)( gSet.getOverCutLen() * sin(pCutData1->m_dAngle) );
 				pCutData1->m_iX = pCutData1->m_iX+iDeltaX;
 				pCutData1->m_iY = pCutData1->m_iY+iDeltaY;
 				
 				pCutDataAdd = new ST_CNC_DATA_ALL;
-				iDeltaX1 = (int)( gMacSet.getOverCutLen() * cos(pCutData->m_dAngle) );
-				iDeltaY1 = (int)( gMacSet.getOverCutLen() * sin(pCutData->m_dAngle) );	
-				pCutDataAdd->m_nCmdType = TYPE_CUT;
+				iDeltaX1 = (int)( gSet.getOverCutLen() * cos(pCutData->m_dAngle) );
+				iDeltaY1 = (int)( gSet.getOverCutLen() * sin(pCutData->m_dAngle) );	
+				pCutDataAdd->m_cCmdType = TYPE_CUT;
 				pCutDataAdd->m_iX = pCutData1->m_iX-iDeltaX-iDeltaX1;
 				pCutDataAdd->m_iY = pCutData1->m_iY-iDeltaY-iDeltaY1;
 
@@ -509,10 +261,10 @@ void AddOverCutData()
 	}
 	
 	pCutData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(nDataSize - 1);
-	if (pCutData->m_nCmdType == TYPE_CUT) //最后一个数据是落笔
+	if (pCutData->m_cCmdType == TYPE_CUT) //最后一个数据是落笔
 	{
-		iDeltaX = (int)(gMacSet.getOverCutLen() * cos(pCutData->m_dAngle) );
-		iDeltaY = (int)(gMacSet.getOverCutLen() * sin(pCutData->m_dAngle) );
+		iDeltaX = (int)(gSet.getOverCutLen() * cos(pCutData->m_dAngle) );
+		iDeltaY = (int)(gSet.getOverCutLen() * sin(pCutData->m_dAngle) );
 		pCutData->m_iX = pCutData->m_iX+iDeltaX;
 		pCutData->m_iY = pCutData->m_iY+iDeltaY;
 	}
@@ -546,37 +298,32 @@ void dumpCutDataToFile()
 	CString strTemp;
 	CString strFileName;
 	int nSize;
-	strFileName.Format("d:\\CutData.csv");
-	fileData.Open(strFileName,CFile::modeCreate|CFile::modeReadWrite|CFile::typeBinary);
+	strFileName.Format("d:\\Spcutter7.csv");
+	fileData.Open(strFileName, CFile::modeCreate | CFile::modeReadWrite | CFile::typeBinary);
 	nSize = g_ptrCncList.GetSize();
-	strTemp.Format("目标X,目标Y,DeltaX,DeltaY,加速次数,角度,角度变化,曲率,降速比,MaxSpd,EndSpd,类型\n");
+	strTemp.Format("目标X,目标Y,DeltaX,DeltaY,加速次数,角度,角度变化,是否弧线,MaxSpd,EndSpd,类型\n");
+	fileData.Write(strTemp.GetBuffer(0), strTemp.GetLength());
 
-	fileData.Write(strTemp.GetBuffer(0),strTemp.GetLength());
-	for (i=0;i<nSize;i++)
+	double d;
+	for (i = 0; i < nSize; i++)
 	{
 		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(i);
-	
-//		strTemp.Format("%d,%d, %d,%d,%d, %f,%f,%f,%f, %d,%d,%d\n",
-		strTemp.Format("%d,%d, %d,%d,%d, %f,%f,%f,%d, %d,%d,%d\n",
-			pCncData->m_iX,
-			pCncData->m_iY,
+		d = fabs(pCncData->m_dDeltaAngle)*100.0 / pCncData->m_nLongAxialStep;
 
-			pCncData->m_iDeltaX,
-			pCncData->m_iDeltaY,
-			pCncData->m_nLongAxialStep,
-
-			pCncData->m_dAngle*180.0/PI,
-			pCncData->m_dDeltaAngle*180.0/PI,
-			pCncData->m_dCurvature,
-//			pCncData->m_dDccPerCent,
-			(u16)( pCncData->m_dDccPerCent * 4096.0 ),
+		strTemp.Format("%d,%d, %d,%d, %d, %f,%f, %d,%d,%d,%c,%f\n",
+			pCncData->m_iX, pCncData->m_iY,
+			pCncData->m_iDeltaX, pCncData->m_iDeltaY,
+			pCncData->m_nSecNum,
+			pCncData->m_dAngle*180.0 / PI, pCncData->m_dDeltaAngle*180.0 / PI,
+			pCncData->m_cIsCurve,
 			pCncData->m_nMaxSpeed,
-			pCncData->m_nEndSpeed,
-			pCncData->m_nCmdType);
-		fileData.Write(strTemp.GetBuffer(0),strTemp.GetLength());
+			pCncData->m_nMaxEndSpeed,
+			pCncData->m_cCmdType,
+			d);
+		fileData.Write(strTemp.GetBuffer(0), strTemp.GetLength());
 	}
 	fileData.Close();
-	AfxMessageBox(strFileName+" Saved");
+	AfxMessageBox("file saved");
 }
 
 void ReleaseCncDataBuffer()
@@ -591,23 +338,3 @@ void ReleaseCncDataBuffer()
 	g_ptrCncList.RemoveAll();
 }
 
-
-void GetCncMaxPulse()
-{
-	int nSize;
-	ST_CNC_DATA_ALL *pCncData;
-	int nIndex;
-	nSize = g_ptrCncList.GetSize();
-	
-	pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(0);
-	gnCncXMax = pCncData->m_iX;
-	gnCncYMax = pCncData->m_iY;
-	
-	for (nIndex=1; nIndex<nSize; nIndex++)
-	{
-		pCncData = (ST_CNC_DATA_ALL*)g_ptrCncList.GetAt(nIndex);
-		gnCncXMax = (gnCncXMax > pCncData->m_iX)? gnCncXMax : pCncData->m_iX;
-		gnCncYMax = (gnCncYMax > pCncData->m_iY)? gnCncYMax : pCncData->m_iY;
-	}
-	return;
-}

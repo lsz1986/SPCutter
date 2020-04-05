@@ -63,28 +63,25 @@ protected:  // control bar embedded members
 	CToolBar m_wndToolBar;
 	CSplitterWnd m_wndSplitter;
 
+	BOOL m_bShowDlgBar;
+
 	afx_msg LRESULT OnEndWorkThread(WPARAM wParam,LPARAM lParam);
-	afx_msg LRESULT OnDispSysStatus(WPARAM wParam,LPARAM lParam);
 	afx_msg LRESULT OnSearchNewPltFile(WPARAM wParam,LPARAM lParam);
 	afx_msg LRESULT OnAutoStartWork(WPARAM wParam,LPARAM lParam);
 
-	afx_msg void OnUpdateCmdUISysState(CCmdUI* pCmdUI);
 // Generated message map functions
 protected:
 	//{{AFX_MSG(CMainFrame)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnSetClr();
 	afx_msg void OnSetDir();
-	afx_msg void OnPaint();
 	afx_msg LRESULT onShowTask(WPARAM wParam,LPARAM lParam); 
 	afx_msg void OnAppToTray();
 	afx_msg void OnPltOpen();
 	afx_msg void OnPltAdd();
 	afx_msg void OnPltSave();
 	afx_msg void OnParaSet();
-	afx_msg void OnManualCtrl();
 	afx_msg void OnClose();
-	afx_msg void OnSpClean();
 	afx_msg void OnAuthInfo();
 	afx_msg void OnSuperUser();
 	afx_msg void OnZoomIn();
@@ -102,17 +99,19 @@ protected:
 	afx_msg void OnWorkStart();
 	afx_msg void OnWorkPause();
 	afx_msg void OnWorkCancel();
-	afx_msg void OnUpdateWorkPause(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateWorkStart(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateWorkCancel(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateManualCtrl(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateSpClean(CCmdUI* pCmdUI);
 	afx_msg void OnLanChs();
 	afx_msg void OnLanEn();
 	afx_msg void OnUpdateLanChs(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateLanEn(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnIdcbDlgBar();
+	afx_msg void OnUpdateIdcbDlgBar(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateConnectViaEth(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateConnectViaUsb(CCmdUI *pCmdUI);
+	afx_msg void OnConnectViaEth();
+	afx_msg void OnConnectViaUsb();
 };
 
 /////////////////////////////////////////////////////////////////////////////

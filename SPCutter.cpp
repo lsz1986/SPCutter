@@ -57,7 +57,7 @@ BOOL CSpCutterApp::InitInstance()
 		return FALSE;
 	}
 
-    HANDLE hMutex = CreateMutex(NULL, FALSE, "SpCutterMutex");
+    HANDLE hMutex = CreateMutex(NULL, FALSE, "SpCutterV7Mutex");
     // 如果本程序已有实例在运行，则GetLastError()返回ERROR_ALREADY_EXISTS
     if(GetLastError() == ERROR_ALREADY_EXISTS)
     {
@@ -69,7 +69,7 @@ BOOL CSpCutterApp::InitInstance()
         {
 //如有，则是要本程序已运行实例的窗口，并将它激活。
 //            if(::GetProp(hWndPrev, AfxGetApp()->m_pszExeName))
-            if(::GetProp(hWndPrev, "YHZ_SP_Cutter"))
+            if(::GetProp(hWndPrev, "SPCutterV7"))
             {
                 //如果主窗口已最小化，则恢复其大小。
                 if (::IsIconic(hWndPrev))
@@ -89,7 +89,7 @@ BOOL CSpCutterApp::InitInstance()
 	AfxEnableControlContainer();
 	ReadSettings(); //从ini文件中读取系统设置
 	SetLanguage();
-	gMacSet.checkDataDir(); //检查临时目录
+	gSet.checkDataDir(); //检查临时目录
 
 	// Standard initialization
 	// If you are not using these features and wish to reduce the size
@@ -213,45 +213,47 @@ void CSpCutterApp::WriteSettings()
 	WriteProfileInt(_T("Para"), _T("DispSizeY"), gDispSet.getDispSizeY());
 	WriteProfileInt(_T("Para"), _T("Language"), gDispSet.getLanguage());
 
-	WriteProfileInt(_T("Para"), _T("绘图线宽"), gMacSet.getLineWidth()); //线宽
-	WriteProfileInt(_T("Para"), _T("转角补偿"), gMacSet.getOverCutLen()); //转角补偿
+	WriteProfileInt(_T("Para"), _T("绘图线宽"), gSet.getLineWidth()); //线宽
+	WriteProfileInt(_T("Para"), _T("转角补偿"), gSet.getOverCutLen()); //转角补偿
 
-	WriteProfileInt(_T("Para"), _T("AutoDelPlt"), (int)gMacSet.getAutoDelPlt()); //自动删除Plt
-	WriteProfileInt(_T("Para"), _T("自动工作"), (int)gMacSet.getJobAutoStart()); //自动工作
-	WriteProfileInt(_T("Para"), _T("只绘不切"), (int)gMacSet.getOnlyPlot()); //只绘不切
+	WriteProfileInt(_T("Para"), _T("AutoDelPlt"), (int)gSet.getAutoDelPlt()); //自动删除Plt
+	WriteProfileInt(_T("Para"), _T("自动工作"), (int)gSet.getJobAutoStart()); //自动工作
+	WriteProfileInt(_T("Para"), _T("只绘不切"), (int)gSet.getOnlyPlot()); //只绘不切
 
-	WriteProfileInt(_T("Para"), _T("FirstPageConfirm"), (int)gMacSet.getFirstPageConfirm()); //第一页按确定按钮
+	WriteProfileInt(_T("Para"), _T("FirstPageConfirm"), (int)gSet.getFirstPageConfirm()); //第一页按确定按钮
 
-	WriteProfileString(_T("Para"), _T("DataDir"), gMacSet.m_strDataDir);
-	WriteProfileString(_T("Para"), _T("注册码"), gMacSet.getAuthCode());
+	WriteProfileString(_T("Para"), _T("DataDir"), gSet.m_strDataDir);
+	WriteProfileString(_T("Para"), _T("注册码"), gSet.getAuthCode());
 
-	WriteProfileInt(_T("Para"), _T("PLTSCALE"), (int)gMacSet.getPltScale());
-	WriteProfileInt(_T("Para"), _T("PLT文件页长"), (int)gMacSet.getPltPageLen());
-	WriteProfileInt(_T("Para"), _T("曲线密度"), (int)gMacSet.getCurveLen());
+	WriteProfileInt(_T("Para"), _T("PLTSCALE"), (int)gSet.getPltScale());
+	WriteProfileInt(_T("Para"), _T("PLT文件页长"), (int)gSet.getPltPageLen());
+	WriteProfileInt(_T("Para"), _T("曲线切割速度"), (int)gSet.getCurveSpd());
 	
-	WriteProfileInt(_T("Para"), _T("AutoCleanSP"), (int)gMacSet.getSpAutoClean()); //开始工作前清洗喷头
-	WriteProfileInt(_T("Para"), _T("DisplayStartAndDir"), (int)gMacSet.getDisplayStartAndDir());
-	WriteProfileInt(_T("Para"), _T("DisplaySequence"), (int)gMacSet.getDisplaySequence());
-	WriteProfileInt(_T("Para"), _T("列表显示在左"), (int)gMacSet.getListDispLeft());
-	WriteProfileInt(_T("Para"), _T("向左平移"), (int)gMacSet.getAutoMoveToLeft());
-	WriteProfileInt(_T("Para"), _T("向下平移"), (int)gMacSet.getAutoMoveToBottom());
-	WriteProfileInt(_T("Para"), _T("双向打印"), (int)gMacSet.getBiDir());
+	WriteProfileInt(_T("Para"), _T("AutoCleanSP"), (int)gSet.getSpAutoClean()); //开始工作前清洗喷头
+	WriteProfileInt(_T("Para"), _T("DisplayStartAndDir"), (int)gSet.getDisplayStartAndDir());
+	WriteProfileInt(_T("Para"), _T("DisplaySequence"), (int)gSet.getDisplaySequence());
+	WriteProfileInt(_T("Para"), _T("向左平移"), (int)gSet.getAutoMoveToLeft());
+	WriteProfileInt(_T("Para"), _T("向下平移"), (int)gSet.getAutoMoveToBottom());
+	WriteProfileInt(_T("Para"), _T("双向打印"), (int)gSet.getBiDir());
 
-	WriteProfileInt(_T("Para"), _T("Y向边距"), (int)gMacSet.getYBlankMm());
-	WriteProfileInt(_T("Para"), _T("X导出比例"), (int)gMacSet.getPltSaveScaleX());
-	WriteProfileInt(_T("Para"), _T("Y导出比例"), (int)gMacSet.getPltSaveScaleY());
+	WriteProfileInt(_T("Para"), _T("Y向边距"), (int)gSet.getYBlankMm());
+	WriteProfileInt(_T("Para"), _T("X导出比例"), (int)gSet.getPltSaveScaleX());
+	WriteProfileInt(_T("Para"), _T("Y导出比例"), (int)gSet.getPltSaveScaleY());
 
-	WriteProfileInt(_T("Para"), _T("自动识别轮廓"), gMacSet.getFindOutLine());
+	WriteProfileInt(_T("Para"), _T("自动识别轮廓"), gSet.getFindOutLine());
 
-// 	DeleteFile(gMacSet.m_strFonHz);
-// 	DeleteFile(gMacSet.m_strFonEn);
+	WriteProfileInt(_T("Para"), _T("绘图仪IP"), gSet.getMachineIpAddr());
+	WriteProfileInt(_T("Para"), _T("通过网线连接"), gSet.getConnetViaEth());
+
+// 	DeleteFile(gSet.m_strFonHz);
+// 	DeleteFile(gSet.m_strFonEn);
 }
 
 void CSpCutterApp::ReadSettings()
 {
-	gMacSet.getAppDir();
+	gSet.getAppDir();
 	free((void*)m_pszProfileName);
-	m_pszProfileName = _tcsdup(gMacSet.m_strAppDir + "setting.ini");
+	m_pszProfileName = _tcsdup(gSet.m_strAppDir + "setting.ini");
 
 	gDispSet.setClrBG( GetProfileInt(_T("Para"), _T("BGColor"),RGB(0,0,0)) );
 	gDispSet.setClrFR( GetProfileInt(_T("Para"), _T("FRColor"),RGB(0,255,0)) );
@@ -263,36 +265,38 @@ void CSpCutterApp::ReadSettings()
 
 	gDispSet.setLanguage(GetProfileInt(_T("Para"), _T("Language"),0));
 
-	gMacSet.setLineWidth(GetProfileInt(_T("Para"), _T("绘图线宽"),1));
-	gMacSet.setOverCutLen(GetProfileInt(_T("Para"), _T("转角补偿"),50));
+	gSet.setLineWidth(GetProfileInt(_T("Para"), _T("绘图线宽"),1));
+	gSet.setOverCutLen(GetProfileInt(_T("Para"), _T("转角补偿"),50));
 
-	gMacSet.setAutoDelPlt(GetProfileInt(_T("Para"), _T("AutoDelPlt"),0));
-	gMacSet.setJobAutoStart(GetProfileInt(_T("Para"), _T("自动工作"),0));
-	gMacSet.setOnlyPlot(GetProfileInt(_T("Para"), _T("只绘不切"),0));
+	gSet.setAutoDelPlt(GetProfileInt(_T("Para"), _T("AutoDelPlt"),0));
+	gSet.setJobAutoStart(GetProfileInt(_T("Para"), _T("自动工作"),0));
+	gSet.setOnlyPlot(GetProfileInt(_T("Para"), _T("只绘不切"),0));
 
-	gMacSet.setFirstPageConfirm(GetProfileInt(_T("Para"), _T("FirstPageConfirm"),0));
+	gSet.setFirstPageConfirm(GetProfileInt(_T("Para"), _T("FirstPageConfirm"),0));
 
-	gMacSet.setDataDir(GetProfileString(_T("Para"), _T("DataDir")));
-	gMacSet.setAuthCode(GetProfileString(_T("Para"), _T("注册码")));
-	gMacSet.setPltScale(GetProfileInt(_T("Para"), _T("PLTSCALE"),1000));
-	gMacSet.setPltPageLen(GetProfileInt(_T("Para"), _T("PLT文件页长"),0));
-	gMacSet.setCurveLen(GetProfileInt(_T("Para"), _T("曲线密度"),1));
+	gSet.setDataDir(GetProfileString(_T("Para"), _T("DataDir")));
+	gSet.setAuthCode(GetProfileString(_T("Para"), _T("注册码")));
+	gSet.setPltScale(GetProfileInt(_T("Para"), _T("PLTSCALE"),1000));
+	gSet.setPltPageLen(GetProfileInt(_T("Para"), _T("PLT文件页长"),0));
+	gSet.setCurveSpd(GetProfileInt(_T("Para"), _T("曲线切割速度"),8));
 
-	gMacSet.setSpAutoClean(GetProfileInt(_T("Para"), _T("AutoCleanSP"),0));
-	gMacSet.setDisplayStartAndDir(GetProfileInt(_T("Para"), _T("DisplayStartAndDir"),1));
-	gMacSet.setDisplaySequence(GetProfileInt(_T("Para"), _T("DisplaySequence"),1));
+	gSet.setSpAutoClean(GetProfileInt(_T("Para"), _T("AutoCleanSP"),0));
+	gSet.setDisplayStartAndDir(GetProfileInt(_T("Para"), _T("DisplayStartAndDir"),1));
+	gSet.setDisplaySequence(GetProfileInt(_T("Para"), _T("DisplaySequence"),1));
 
 
-	gMacSet.setListDispLeft(GetProfileInt(_T("Para"), _T("列表显示在左"),1));
-	gMacSet.setAutoMoveToLeft(GetProfileInt(_T("Para"), _T("向左平移"),1));
-	gMacSet.setAutoMoveToBottom(GetProfileInt(_T("Para"), _T("向下平移"),1));
-	gMacSet.setBiDir(GetProfileInt(_T("Para"), _T("双向打印"),1));
-	gMacSet.setYBlankMm(GetProfileInt(_T("Para"), _T("Y向边距"),0));
+	gSet.setAutoMoveToLeft(GetProfileInt(_T("Para"), _T("向左平移"),1));
+	gSet.setAutoMoveToBottom(GetProfileInt(_T("Para"), _T("向下平移"),1));
+	gSet.setBiDir(GetProfileInt(_T("Para"), _T("双向打印"),1));
+	gSet.setYBlankMm(GetProfileInt(_T("Para"), _T("Y向边距"),0));
 
-	gMacSet.setPltSaveScaleX(GetProfileInt(_T("Para"), _T("X导出比例"),1000));
-	gMacSet.setPltSaveScaleY(GetProfileInt(_T("Para"), _T("Y导出比例"),1000));
+	gSet.setPltSaveScaleX(GetProfileInt(_T("Para"), _T("X导出比例"),1000));
+	gSet.setPltSaveScaleY(GetProfileInt(_T("Para"), _T("Y导出比例"),1000));
 
-	gMacSet.setFindOutLine(GetProfileInt(_T("Para"), _T("自动识别轮廓"),0)); //识别轮廓
+	gSet.setMachineIpAddr((unsigned int)(GetProfileInt(_T("Para"), _T("绘图仪IP"), 0xDA01A8C0)));
+	gSet.setConnetViaEth(GetProfileInt(_T("Para"), _T("通过网线连接"), 0));
+
+	gSet.setFindOutLine(GetProfileInt(_T("Para"), _T("自动识别轮廓"),0)); //识别轮廓
 
 }
 

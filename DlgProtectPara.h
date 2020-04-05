@@ -19,16 +19,15 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CDlgProtectPara)
 	enum { IDD = IDDLG_PROTECTPARA };
-	CString	m_sPPW;
 	double	m_dPPMMX;
 	double	m_dPPMMY;
-	UINT	m_nSpAccStep;
+	UINT	m_nSpAccDistmm;
 	UINT	m_nMacSizeX;
+	UINT	m_nCurveSpd;
 	UINT	m_nMacSizeY;
 	UINT	m_nSpdCut;
 	UINT	m_nSpdMove;
 	BOOL	m_bJamDetectOn;
-	UINT	m_nSdPercent;
 	//}}AFX_DATA
 
 
@@ -45,10 +44,12 @@ protected:
 	// Generated message map functions
 	//{{AFX_MSG(CDlgProtectPara)
 	virtual BOOL OnInitDialog();
-	virtual void OnOK();
 	afx_msg void OnConfirm();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnBnClickedChangeRate();
+	int m_nSecLen;
 };
 
 //{{AFX_INSERT_LOCATION}}

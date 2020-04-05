@@ -1,24 +1,20 @@
-#ifndef _GLOBAL_DEF_H_
+ï»¿#ifndef _GLOBAL_DEF_H_
 #define _GLOBAL_DEF_H_
-#include "user_usb_cmd.h"
+#include "zh_cmd_def.h"
 
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 
 #define USER_SHOWTASK		WM_USER+101
-#define USER_END_WTHREAD	WM_USER+110
-#define USER_DISP_STAT		WM_USER+111
-#define USER_SEARCH_PLT		WM_USER+112
-#define USER_AUTO_START		WM_USER+113
+#define USER_END_WTHREAD	WM_USER+102
+#define USER_SEARCH_PLT		WM_USER+103
+#define USER_AUTO_START		WM_USER+104
 
-#define LT_SOLID		0 //ÊµÏß
-#define LT_DASH			1 //¶ÌÏß ´óÓÚ1 ¶¼Îª¶ÌÏß
+#define LT_SOLID		0 //å®çº¿
+#define LT_DASH			1 //çŸ­çº¿ å¤§äº1 éƒ½ä¸ºçŸ­çº¿
 
-#define MAC_STATE_SIZE 16
-
-#define REG_INFO_SIZE 12
-typedef struct  
+typedef struct _struct_reginfo_
 {
 	u16 m_nCpuCode;
 	u16 m_nAuthDays;
@@ -26,136 +22,90 @@ typedef struct
 	u32 m_nRtcNow;
 }STRUCT_REG_INFO;
 
-#define MAC_PARA_SIZE 56
-typedef struct
+#define MAC_PARA_SIZE 60
+typedef struct _mac_para_
 {
-//16Byte---------------------------------------
+//16Byte--------------------------------------
 	double m_dPPMM_X;
 	double m_dPPMM_Y;
-//10byte---------------------------------------
+//4byte---------------------------------------
+	u32 m_nW5500Ip;
+//16byte--------------------------------------
 	unsigned short m_s10000X;
 	unsigned short m_s10000Y;
-	unsigned short m_sSpAccStep; //ÅçÄ«¼ÓËÙ¾àÀë
-	unsigned short m_sMacSizeXmm; //XÈí¼ş±£»¤Öµmm
-	unsigned short m_sMacSizeYmm; //YÈí¼ş±£»¤Öµmm
 
-//6byte---------------------------------------
-	unsigned short m_sCutEndPosYmm; //×Ô¶¯²Ã¶ÏÍ£Ö¹Î»ÖÃ
-	unsigned short m_sJobEndPosXmm;  //Í£»úÊ±Ö¸¶¨Î»ÖÃX
-	unsigned short m_sJobEndPosYmm;  //Í£»úÊ±Ö¸¶¨Î»ÖÃY
+	unsigned short m_sMacSizeXmm; //Xè½¯ä»¶ä¿æŠ¤å€¼mm
+	unsigned short m_sMacSizeYmm; //Yè½¯ä»¶ä¿æŠ¤å€¼mm
+
+	unsigned short m_sCutPaperStartYmm; //è£æ–­Yå‘èµ·å§‹ä½ç½®
+	unsigned short m_sCutPaperEndYmm; //è£æ–­Yå‘åœæ­¢ä½ç½®
+
+	unsigned short m_sJobEndPosXmm;  //åœæœºæ—¶æŒ‡å®šä½ç½®X
+	unsigned short m_sJobEndPosYmm;  //åœæœºæ—¶æŒ‡å®šä½ç½®Y
 //10byte--------------------------------------------------------------------------------
-	unsigned char m_cKPDistX; //µ¶±Ê²¹³¥X
-	unsigned char m_cKPDistY; //µ¶±Ê²¹³¥Y
-	unsigned char m_cPwmKStart;  //Æô¶¯µ¶Ñ¹
-	unsigned char m_cPwmKWork;   //¹¤×÷µ¶Ñ¹
-	unsigned char m_cSp12Y; //ÅçÍ·12Ö®¼äY·½Ïò´í¿ªµÄµãÊı
+	unsigned char m_cSpStat;     //å–·å¤´çŠ¶æ€ 0-å–·å¤´å…¨é€‰ï¼Œ1-ä»…é€‰æ‹©å–·å¤´1 2-ä»…é€‰æ‹©å–·å¤´2
+	unsigned char m_cSp12Y; //å–·å¤´12ä¹‹é—´Yæ–¹å‘é”™å¼€çš„ç‚¹æ•°
+	unsigned char m_cSp1DotLR; //å–·å¤´1å·¦å³ä¸¤åˆ—çš„è·ç¦»
+	unsigned char m_cSp2DotLR; //å–·å¤´2å·¦å³ä¸¤åˆ—çš„è·ç¦»
+	unsigned char m_cYLRError; //YåŒå‘æ‰“å°è¯¯å·®(å•ä½ï¼Œçº¿ç´ )
 
-	unsigned char m_cJamDetect; //ÅçÄ«Ê±¿¨Ö½¼ì²â¿ªÆô
-	unsigned char m_cSp1DotLR; //ÅçÍ·1×óÓÒÁ½ÁĞµÄ¾àÀë
-	unsigned char m_cSp2DotLR; //ÅçÍ·2×óÓÒÁ½ÁĞµÄ¾àÀë
-	unsigned char m_cSpdMove;    //¿Õ³ÌËÙ¶È
-	unsigned char m_cSpdCut;     //ÇĞ¸îËÙ¶È
-//9byte--------------------------------------------------------------------------------
-	unsigned char m_cYLRError; //YË«Ïò´òÓ¡Îó²î(µ¥Î»£¬ÏßËØ)
-	unsigned char m_cSpStat;     //ÅçÍ·×´Ì¬ 0-ÅçÍ·È«Ñ¡£¬1-½öÑ¡ÔñÅçÍ·1 2-½öÑ¡ÔñÅçÍ·2
-	unsigned char m_cSpEX; //ÅçÍ·12Ö®¼äÖØµşµÄµãĞĞÊı
-	unsigned char m_cAngleAdjust; //´¹Ö±¶ÈĞ£Õı 50~150
-	unsigned char m_cJobEndHeadPos; //ÇĞ¸îÍê³ÉÊ±»úÍ·Î»ÖÃ
+	unsigned char m_cSpEX; //å–·å¤´12ä¹‹é—´é‡å çš„ç‚¹è¡Œæ•°
+	unsigned char m_cKPDistX; //åˆ€ç¬”è¡¥å¿X
+	unsigned char m_cKPDistY; //åˆ€ç¬”è¡¥å¿Y
+	unsigned char m_cPwmKStart;  //å¯åŠ¨åˆ€å‹
+	unsigned char m_cPwmKWork;   //å·¥ä½œåˆ€å‹
+
+//11byte--------------------------------------------------------------------------------
+	unsigned char m_cSpAccDistMm; //å–·å¢¨åŠ é€Ÿè·ç¦»
+	unsigned char m_cSpdMove;    //ç©ºç¨‹é€Ÿåº¦
+	unsigned char m_cSpdCut;     //åˆ‡å‰²é€Ÿåº¦
+	unsigned char m_cAngleAdjust; //å‚ç›´åº¦æ ¡æ­£ 50~150
+	unsigned char m_cJobEndHeadPos; //åˆ‡å‰²å®Œæˆæ—¶æœºå¤´ä½ç½®
+
 	unsigned char m_cPPDOT_Y;
+	unsigned char m_cNull; //ä¸å†ä½¿ç”¨
+	unsigned char m_cSpType; //å¢¨ç›’ç±»å‹
+	unsigned char m_cSecLen;//é»˜è®¤ 80
 	unsigned char m_cLedLan;
-	unsigned char m_cLowSpdMode;
-	unsigned char m_cSpType; //Ä«ºĞÀàĞÍ
+
+	unsigned char m_cJamDetect; //å–·å¢¨æ—¶å¡çº¸æ£€æµ‹å¼€å¯
+	unsigned char m_cVer;
 
 }ST_MAC_PARA;
 
-typedef union
-{
-	ST_MAC_PARA stBuff; 
-	unsigned short shortBuff[MAC_PARA_SIZE/2];
-	unsigned char charBuff[MAC_PARA_SIZE]; 
-} UNION_MAC_PARA;
-
 typedef struct
 {
-	u32 cutNo;
-	u32 cutSum;
-	u16 plotNo;
-	u16 plotRcvNo;
-	u16 plotSum;
-	u8 macState; //Ö÷»ú×´Ì¬
-	u8 lastCmdState; //ÃüÁîÖ´ĞĞ·µ»ØÖµ
-}ST_SYS_STATE; //16×Ö½Ú
+	int m_iX; //ç›®æ ‡X
+	int m_iY; //ç›®æ ‡Y
 
-typedef union
-{
-	ST_SYS_STATE stBuff;
-	unsigned char charBuff[MAC_STATE_SIZE];
-}UNION_SYS_STATE;
+	int m_iDeltaX; //Xå˜åŒ–é‡
+	int m_iDeltaY; //Yå˜åŒ–é‡
 
-typedef union 
-{
-	u8 u8buff[2];
-	u16 u16buff;
-}UNION_U8U16;
-
-typedef union 
-{
-	u8 u8buff[4];
-	u32 u32buff;
-}UNION_U8U32;
-
-typedef struct  
-{
-	CWnd *m_pWnd;
-}ST_THREAD_PARA;
-
-typedef struct
-{
-	int m_iX; //Ä¿±êX
-	int m_iY; //Ä¿±êY
-	int m_iDeltaX; //X±ä»¯Á¿
-	int m_iDeltaY; //Y±ä»¯Á¿
-	int m_nLongAxialStep; //·Ö¶ÎÊı
+	UINT m_nLongAxialStep; 
+	UINT m_nSecNum;	//åˆ†æ®µæ•°
 	double m_dAngle;
 	double m_dDeltaAngle;
-	double m_dCurvature;
-	double m_dDccPerCent;
 
-	int m_nEndSpeed; //¼ÆËãÊ±±ØĞëint·ñÔòÔ½½ç
+	int m_nMaxEndSpeed; //è®¡ç®—æ—¶int,å‘é€æ˜¯å˜ä¸º8ä½
 	int m_nMaxSpeed;
-	u16 m_nCmdType;
+	int m_cIsCurve; //0 ç›´çº¿ 1å¼§çº¿ 2çº¿å¯†çš„å¼§çº¿ 
+	u8 m_cCmdType;
 }ST_CNC_DATA_ALL;
 
 typedef struct
 {
-	int m_iX; //Ä¿±êX
-	int m_iY; //Ä¿±êY
-	u16 m_nMaxSpeed;
-	u16 m_nEndSpeed;
-	u16 m_nCmdType;
-	u16 m_nDccPerCent;
-}ST_CNC_DATA_SEND;
-
-typedef struct  
-{
-	int m_spdMax;	//	5000
-	int m_spdLV1;	//	300
-	int m_spdLV2_R002;  //400 
-	int m_spdLV3_R004;  //480 
-	int m_spdLV4_R005;  //560
-	int m_spdLV5_R010;  //640
-	int m_spdLV6_R020;  //720
-	int m_spdLV7_R050;  //800
-	int m_spdLV8_R100;  //1000
-	int m_spdLV9_R150;  //1200
-	int m_spdLV10_R200;  //1400
-	int m_spdLV11_R300;  //1600
-}ST_CNC_SPD_LIMIT;
+	int m_iX;
+	int m_iY;
+	u8 m_nMaxSpeed;
+	u8 m_nEndSpeed;
+	u8 m_cCmdType;
+	u8 m_cNull;
+}STRUCT_CNC_DATA;
 
 typedef union
 {
 	u8 u8Buff[CNC_DATA_SIZE];
-	ST_CNC_DATA_SEND stBuff;
+	STRUCT_CNC_DATA stBuff;
 }UNION_CNC_DATA_SEND;
 
 #endif

@@ -84,36 +84,19 @@ void CMyListView::OnInitialUpdate()
     lStyle |= LVS_REPORT; //设置style
     SetWindowLong(myListCtrl.m_hWnd, GWL_STYLE, lStyle);//设置style
 
-	if(gMacSet.getListDispLeft())
+	if (gDispSet.getLanguage() == 0)
 	{
-		if (gDispSet.getLanguage() == 0)
-		{
-			myListCtrl.InsertColumn(0,_T("序号"),LVCFMT_LEFT,36);//插入列
-			myListCtrl.InsertColumn(1,_T("幅面(mm*mm)"),LVCFMT_LEFT,96);
-			myListCtrl.InsertColumn(2,_T("原始文件名---页号"),LVCFMT_LEFT,220);
-		}
-		else
-		{
-			myListCtrl.InsertColumn(0,_T("No."),LVCFMT_LEFT,36);//插入列
-			myListCtrl.InsertColumn(1,_T("Size(mm*mm)"),LVCFMT_LEFT,96);
-			myListCtrl.InsertColumn(2,_T("File Name --- Page No."),LVCFMT_LEFT,220);
-		}
+		myListCtrl.InsertColumn(0,_T("序号"),LVCFMT_CENTER,80);//插入列
+		myListCtrl.InsertColumn(1,_T("幅面(Xmm*Ymm)"),LVCFMT_CENTER,220);
+		myListCtrl.InsertColumn(2,_T("原始文件名---页号"),LVCFMT_CENTER,600);
 	}
 	else
 	{
-		if (gDispSet.getLanguage() == 0)
-		{
-			myListCtrl.InsertColumn(0,_T("序号"),LVCFMT_CENTER,80);//插入列
-			myListCtrl.InsertColumn(1,_T("幅面(Xmm*Ymm)"),LVCFMT_CENTER,220);
-			myListCtrl.InsertColumn(2,_T("原始文件名---页号"),LVCFMT_CENTER,600);
-		}
-		else
-		{
-			myListCtrl.InsertColumn(0,_T("No."),LVCFMT_CENTER,80);//插入列
-			myListCtrl.InsertColumn(1,_T("Size(Xmm*Ymm)"),LVCFMT_CENTER,220);
-			myListCtrl.InsertColumn(2,_T("File Name---Page No."),LVCFMT_CENTER,600);
-		}
+		myListCtrl.InsertColumn(0,_T("No."),LVCFMT_CENTER,80);//插入列
+		myListCtrl.InsertColumn(1,_T("Size(Xmm*Ymm)"),LVCFMT_CENTER,220);
+		myListCtrl.InsertColumn(2,_T("File Name---Page No."),LVCFMT_CENTER,600);
 	}
+
 }
 
 void CMyListView::UpdateList()

@@ -6,7 +6,8 @@
 #endif // _MSC_VER > 1000
 // MyDlgBar.h : header file
 //
-#include "HyperLink.h"
+
+#include "BtnST.h"
 /////////////////////////////////////////////////////////////////////////////
 // CMyDlgBar dialog
 
@@ -14,18 +15,24 @@ class CMyDlgBar : public CDialogBar
 {
 // Construction
 public:
-	BOOL DirIsEmpty(CString strDir);
 	CString m_strTempDataDir;
 	CMyDlgBar(CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CMyDlgBar)
 	enum { IDD = IDDLG_BAR };
-	CHyperLink	m_hyperLinkDataDir;
-	BOOL	m_bJobAutoStart;
-	BOOL	m_bOnlyPlot;
-	BOOL	m_bAutoCleanOn;
-	int		m_nYBlankMm;
+	CButtonST	m_btnArLeft;
+	CButtonST	m_btnArRight;
+	CButtonST	m_btnArUp;
+	CButtonST	m_btnArDown;
+	CButtonST	m_btnWorkStart;
+	CButtonST	m_btnWorkPause;
+	CButtonST	m_btnWorkCancel;
+	CButtonST	m_btnSpClean;
+	CButtonST	m_btnZpSet;
+	CButtonST	m_btnZpToDef;
+	BOOL m_bCutDown;
+	BOOL m_bPumpOn;
 	//}}AFX_DATA
 
 
@@ -41,14 +48,26 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CMyDlgBar)
-	afx_msg void OnSetAutoDir();
 	virtual LRESULT OnInitDialog(UINT wParam,LONG lParam);
-	afx_msg void OnOnlyplot();
-	afx_msg void OnAutoWork();
-	afx_msg void OnAutoCleansp();
-	afx_msg void OnApplyBlankMm();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnUpdateAr(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateIdcbWorkCancel(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateIdcbWorkPause(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateIdcbWorkStart(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateIdcbSpClean(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateIdcbToDefZp(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateIdcbSetZp(CCmdUI *pCmdUI);
+	virtual BOOL OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
+	afx_msg void OnBnClickedSpclean();
+	afx_msg void OnBnClickedSetZp();
+	afx_msg void OnBnClickedToDefzp();
+	afx_msg void OnBnClickedCutDown();
+	afx_msg void OnBnClickedPumpon();
+	afx_msg void OnUpdateIdchkCutDown(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateIdchkPumpon(CCmdUI *pCmdUI);
 };
 
 //{{AFX_INSERT_LOCATION}}

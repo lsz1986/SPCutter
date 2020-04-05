@@ -36,7 +36,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v140_xp</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -54,13 +54,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>./Debug</OutDir>
-    <IntDir>./Debug</IntDir>
+    <OutDir>Debug</OutDir>
+    <IntDir>Debug</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>../Release</OutDir>
-    <IntDir>../Release</IntDir>
+    <OutDir>Release</OutDir>
+    <IntDir>Release</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -102,7 +102,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <OutputFile>./Debug/SpCutter.exe</OutputFile>
+      <OutputFile>Debug/SpCutter.exe</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -141,18 +141,20 @@
     <Link>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <SubSystem>Windows</SubSystem>
-      <OutputFile>./Release/SpCutter.exe</OutputFile>
+      <OutputFile>Release/SpCutter.exe</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BCMenu.cpp" />
+    <ClCompile Include="BtnST.cpp" />
     <ClCompile Include="ButtonClr.cpp" />
     <ClCompile Include="Charactor.cpp" />
     <ClCompile Include="Curve.cpp" />
     <ClCompile Include="DispSet.cpp" />
     <ClCompile Include="DlgAboutGm.cpp" />
     <ClCompile Include="DlgMacPara.cpp" />
-    <ClCompile Include="DlgManCtrl.cpp" />
     <ClCompile Include="DlgProtectPara.cpp" />
+    <ClCompile Include="DlgPwdInput.cpp" />
     <ClCompile Include="DlgRegInfo.cpp" />
     <ClCompile Include="DlgSetClr.cpp" />
     <ClCompile Include="DlgSetDir.cpp" />
@@ -164,13 +166,15 @@
     <ClCompile Include="HyperLink.cpp" />
     <ClCompile Include="IUT308_SpACtrl.cpp" />
     <ClCompile Include="IUT308_SpBCtrl.cpp" />
-    <ClCompile Include="MacSet.cpp" />
     <ClCompile Include="MainFrm.cpp" />
+    <ClCompile Include="MyCommu.cpp" />
     <ClCompile Include="MyDlgBar.cpp" />
+    <ClCompile Include="MyEth.cpp" />
     <ClCompile Include="MyListView.cpp" />
     <ClCompile Include="MyReg.cpp" />
     <ClCompile Include="MyUSB.cpp" />
     <ClCompile Include="OnePage.cpp" />
+    <ClCompile Include="Settings.cpp" />
     <ClCompile Include="SpCutter.cpp" />
     <ClCompile Include="SpCutterDoc.cpp" />
     <ClCompile Include="SpCutterView.cpp" />
@@ -190,14 +194,16 @@
     <ResourceCompile Include="SpCutter.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BCMenu.h" />
+    <ClInclude Include="BtnST.h" />
     <ClInclude Include="ButtonClr.h" />
     <ClInclude Include="Charactor.h" />
     <ClInclude Include="Curve.h" />
     <ClInclude Include="DispSet.h" />
     <ClInclude Include="DlgAboutGm.h" />
     <ClInclude Include="DlgMacPara.h" />
-    <ClInclude Include="DLgManCtrl.h" />
     <ClInclude Include="DlgProtectPara.h" />
+    <ClInclude Include="DlgPwdInput.h" />
     <ClInclude Include="DlgRegInfo.h" />
     <ClInclude Include="DlgSetClr.h" />
     <ClInclude Include="DlgSetDir.h" />
@@ -207,20 +213,22 @@
     <ClInclude Include="GlobalDef.h" />
     <ClInclude Include="HpglFile.h" />
     <ClInclude Include="HyperLink.h" />
-    <ClInclude Include="MacSet.h" />
     <ClInclude Include="MainFrm.h" />
+    <ClInclude Include="MyCommu.h" />
     <ClInclude Include="MyDlgBar.h" />
+    <ClInclude Include="MyEth.h" />
     <ClInclude Include="MyListView.h" />
     <ClInclude Include="MyReg.h" />
     <ClInclude Include="MyUSB.h" />
     <ClInclude Include="OnePage.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="Settings.h" />
     <ClInclude Include="SpCutter.h" />
     <ClInclude Include="SpCutterDoc.h" />
     <ClInclude Include="SpCutterView.h" />
     <ClInclude Include="StdAfx.h" />
     <ClInclude Include="Thread.h" />
-    <ClInclude Include="user_usb_cmd.h" />
+    <ClInclude Include="zh_cmd_def.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="res\ALLICO.ico" />
@@ -248,7 +256,24 @@
     <CustomBuild Include="res\yp4.ico" />
     <CustomBuild Include="ReadMe.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\IconDown.ico" />
+    <Image Include="res\IconLeft.ico" />
+    <Image Include="res\IconRight.ico" />
+    <Image Include="res\IconSpClean.ico" />
+    <Image Include="res\IconUp.ico" />
+    <Image Include="res\IconWorkCancel.ico" />
+    <Image Include="res\IconWorkPause.ico" />
+    <Image Include="res\IconWorkStart.ico" />
+    <Image Include="res\IconZpSet.ico" />
+    <Image Include="res\IconZpToDef.ico" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties RESOURCE_FILE="SpCutter.rc" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>

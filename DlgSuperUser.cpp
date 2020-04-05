@@ -57,7 +57,7 @@ BOOL CDlgSuperUser::OnInitDialog()
 	m_nRandSN += 0x1000;
 	int MBSN1;
 	int MBSN2;
-	unsigned int MBSNALL = gMacSet.getMcuCode();
+	unsigned int MBSNALL = gSet.getMcuCode();
 	MBSN1 = MBSNALL&0xffff;
 	MBSN2 = (MBSNALL>>8)&0xffff;
 	m_strRandCode.Format("%d+%d",MBSN1+MBSN2,m_nRandSN);
@@ -74,46 +74,44 @@ void CDlgSuperUser::OnOK()
 	int MBSN1;
 	int MBSN2;
 	int mmccuu;
-	unsigned int MBSNALL = gMacSet.getMcuCode();
+
+	u8 sbuf[64];
+	u8 rbuf[64];
+
+	unsigned int MBSNALL = gSet.getMcuCode();
 	MBSN1 = MBSNALL&0xffff;
 	MBSN2 = (MBSNALL>>8)&0xffff;
 	int MBSN12 = MBSN1+MBSN2; 
-	if(804165317 == m_nRandPw)
-	{
-		int rev = gUSB.OnEraseMcuFlash();
-		if (0 == rev)
-		{
-			AfxMessageBox("ERASED");
-			CDialog::OnOK();
-		}
-	}
-	else if( MBSN12/5+YHZIntArray[MBSN12%16]/13+YHZIntArray[m_nRandSN%16]/17+m_nRandSN*7 == m_nRandPw)
+	if( MBSN12/5+YHZIntArray[MBSN12%16]/13+YHZIntArray[m_nRandSN%16]/17+m_nRandSN*7 == m_nRandPw)
 	{
 		CTime timeNow = CTime::GetCurrentTime();
-		if( 0 == gUSB.OnSetLastTime((u32)( timeNow.GetTime()) ) )
+		*((int*)(&sbuf[0])) = (u32)(timeNow.GetTime());
+		if (0 == gCommu.OnCmd1(CMD1_SET_LASTTIME, 4, sbuf, 1, rbuf)) // ((u32)(timeNow.GetTime())))
 		{
-			AfxMessageBox("OK");
-			CDialog::OnOK();
-		}
+ 			AfxMessageBox("OK");
+ 			CDialog::OnOK();
+ 		}
 	}
 	else if( MBSN12/7+YHZIntArray[MBSN12%13]/13+YHZIntArray[m_nRandSN%16]/19+m_nRandSN*5 == m_nRandPw)
 	{
-		mmccuu = gMacSet.getMcuCode();
-		int rev = gUSB.OnSetDeblockCode( (int)(mmccuu^0x66543688) );
+		mmccuu = gSet.getMcuCode();
+		*( (int*)(&sbuf[0])) = (int)(mmccuu ^ 0x66543688);
+		int rev = gCommu.OnCmd1(CMD1_SET_UL_CODE, 4, sbuf, 1, rbuf);
 		if (0 == rev)
-		{
-			AfxMessageBox("Deblocked");
-			CDialog::OnOK();
-		}
+ 		{
+ 			AfxMessageBox("Deblocked");
+ 			CDialog::OnOK();
+ 		}
 	}
 	else if(334433 == m_nRandPw)
 	{
-		int rev = gUSB.OnSetDeblockCode(0x1234);
+		*((int*)(&sbuf[0])) = (int)(0x1234);
+		int rev = gCommu.OnCmd1(CMD1_SET_UL_CODE, 4, sbuf, 1, rbuf); //
 		if (0 == rev)
-		{
-			AfxMessageBox("Block enabled");
-			CDialog::OnOK();
-		}
+ 		{
+ 			AfxMessageBox("Block enabled");
+ 			CDialog::OnOK();
+ 		}
 	}
 	else
 	{

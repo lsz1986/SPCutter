@@ -1,4 +1,4 @@
-// CSetMac.h: interface for the CSettings class.
+// CSettings.h: interface for the CSettings class.
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -17,11 +17,11 @@
 #define THREAD_MESSAGE_PAUSE   2
 #define THREAD_MESSAGE_CANCEL  3
 
-class CSetMac  
+class CSettings  
 {
 public:
-	CSetMac();
-	virtual ~CSetMac();
+	CSettings();
+	virtual ~CSettings();
 
 public: 
 //double--16Byte--------------------------------------
@@ -51,11 +51,14 @@ public:
 	inline void setJobEndPosYmm(int n) {m_nJobEndHeadPosYmm = n;};
 	inline int getJobEndPosYmm() {return m_nJobEndHeadPosYmm;};
 
-	inline void setCutEndPosYmm(int n){m_nAutoCutLen = n;}; //切割完成后自动裁断长度
-	inline int getCutEndPosYmm() {return m_nAutoCutLen;};
+	inline void setCutPaperStartYmm(int n){m_nCutPaperStartYmm = n;}; //切割完成后自动裁断起点
+	inline int getCutPaperStartYmm() {return m_nCutPaperStartYmm;};
 
-	inline void setSpAccStep(int n){m_nSpAccStep = n;}; //切割完成后自动裁断长度
-	inline int getSpAccStep() {return m_nSpAccStep;};
+	inline void setCutPaperEndYmm(int n) { m_nCutPaperEndYmm = n; }; //切割完成后自动裁断终点
+	inline int getCutPaperEndYmm() { return m_nCutPaperEndYmm; };
+
+	inline void setSpAccDistmm(int n){m_nSpAccDistmm = n;}; //
+	inline int getSpAccDistmm() {return m_nSpAccDistmm;};
 //u8--5Byte--------------------------------------
 	inline void setKPDistX(int n){ m_nKPDistX = n;}; //刀笔补偿(脉冲数)
 	inline int getKPDistX(){ return m_nKPDistX;}; //刀笔补偿
@@ -77,9 +80,6 @@ public:
 
 	inline void setJamDetect(BOOL b){m_bJamDetectOn = b;};
 	inline BOOL getJamDetect(){return m_bJamDetectOn;};
-
-	inline void setSpdDownType(BOOL b){m_bLowSpdMode = b;};
-	inline BOOL getSpdDownType(){return m_bLowSpdMode;};
 
 	inline void setSP1DOTLR(int n){ m_nSp1DotLr = n;}; //比例调整
 	inline int getSP1DOTLR(){ return m_nSp1DotLr;}; 
@@ -111,7 +111,8 @@ public:
 	inline void setSpType(int n) {m_nSpType = (n>=0 && n<=1)?n:0;}; //墨盒类型
 	inline int getSpType() {return (m_nSpType>=0 && m_nSpType<=1)?m_nSpType:0;};
 
-	
+	inline void setConnetViaEth(BOOL b) { m_bConnectViaEth = b; };
+	inline BOOL getConnetViaEth() { return m_bConnectViaEth; };
 //u8--2byte----------------------------------------------
 	inline void setPPDOTY(int n){ m_nPPDOT_Y = n;};
 	inline int getPPDOTY(){ return m_nPPDOT_Y;}; //喷墨间隔脉冲
@@ -134,9 +135,6 @@ public: //显示参数
 	inline void setDisplaySequence(BOOL b) {m_bDisplaySequence = b;};
 	inline BOOL getDisplaySequence() {return m_bDisplaySequence;};
 
-	inline void setListDispLeft(BOOL b) {m_bListDispLeft = b;};
-	inline BOOL getListDispLeft() {return m_bListDispLeft;};
-	
 public://---其他参数-------------------------
 	inline void setToolBarState(int n){m_nToolBarState = n;};
 	inline int getToolBarState(){return m_nToolBarState;};
@@ -171,6 +169,9 @@ public://---其他参数-------------------------
 	inline void setWorkStartPause(BOOL b){m_bWorkStartPause = b;};
 	inline BOOL getWorkStartPause(){return m_bWorkStartPause;};
 
+	BOOL getAppExitFlag() { return m_bAppExitFlag; }
+	void setAppExitFlag(BOOL b) { m_bAppExitFlag = b; };
+
 	inline void setThreadMessage(int n){m_nUserThreadMessage = n;};
 	inline BOOL getThreadMessage(){return m_nUserThreadMessage;};
 	
@@ -187,8 +188,13 @@ public:
 	BOOL getQueryEnable(){return m_bQueryEnable;};
 	void setQueryEnable(bool b){m_bQueryEnable = b;Sleep(10);};
 
-	inline void setCurveLen(int n){ m_nCurveLen = n; };
-	inline int getCurveLen() { return m_nCurveLen; };
+	inline void setCurveSpd(int n) {
+		if ((n >= 5) && (n <= 50)) 
+			m_nCurveSpd = n;
+		else
+			m_nCurveSpd = 8;
+	};
+	inline int getCurveSpd() { return m_nCurveSpd; };
 
 	inline void setPltSaveScaleX(int n){ m_nPltSaveScaleX = n; };
 	inline int getPltSaveScaleX() { return m_nPltSaveScaleX; };
@@ -199,6 +205,14 @@ public:
 	inline void setFindOutLine(BOOL b) {m_bFindOutLine = b;};
 	inline BOOL getFindOutLine() {return m_bFindOutLine;};
 
+	inline void setSecLen(int n) { m_nCutSecLen = n; };
+	inline int getSecLen() { return m_nCutSecLen; };
+
+	inline void setParaUpdateFlag(BOOL b) { m_bParaUpdateFlag = b; }; //打印线程中更新参数
+	inline BOOL getParaUpdateFlag() { return m_bParaUpdateFlag; };
+
+	inline void setMachineIpAddr(unsigned int n) { m_nMachineIpAddr = n; };
+	inline unsigned int getMachineIpAddr() { return m_nMachineIpAddr; };
 public:
 	inline CString getMcuSn(){return m_strMcuSn;};
 	inline void setMcuSn(CString str){m_strMcuSn = str;};
@@ -217,29 +231,33 @@ public:
 	CString m_strFonEn;
 
 private:
+	BOOL m_bConnectViaEth;
+
 	BOOL m_bJobAutoStart;
 	BOOL m_bOnlyPlot;
 	BOOL m_bFirstPageConfirm;
 	BOOL m_bAutoDelPlt;
 	BOOL m_bSpAutoClean;
+	BOOL m_bParaUpdateFlag;
 
 	BOOL m_bStartAndDirOn;
 	BOOL m_bAutoMoveToLeft;
 	BOOL m_bAutoMoveToBottom;
 	BOOL m_bDisplaySequence; //显示铣刀(切刀)加工顺序
-	BOOL m_bListDispLeft;
 	BOOL m_bBiDir;
 	BOOL m_bJamDetectOn;
 	BOOL m_bLowSpdMode;
 
 	BOOL m_bFindOutLine;
+	BOOL m_bAppExitFlag;
 
+	int m_nMachineIpAddr;
 	int m_nSpType;
 	int m_nLineWidth;
 	int m_nMaxCutSpd;
 	int m_nMachineType;
 	int m_nPltPageLen;
-	int m_nCurveLen;
+	int m_nCurveSpd;
 
 	int m_nJobEndHeadPos;
 	int m_nJobEndHeadPosXmm;
@@ -261,7 +279,8 @@ private:
 	BOOL m_bWorkStartPause;
 
 	int m_nSpdMove;
-	int m_nAutoCutLen;
+	int m_nCutPaperStartYmm;
+	int m_nCutPaperEndYmm;
 
 	int m_nAngleAdjust;
 	int m_nOverCutLen;
@@ -276,7 +295,7 @@ private:
 	int m_nMacSizeX;
 	int m_nMacSizeY;
 
-	int m_nSpAccStep;
+	int m_nSpAccDistmm;
 	int m_nSpdCut;
 	int m_nPPDOT_Y;
 	int m_nLedLan;
@@ -285,6 +304,8 @@ private:
 	int m_nPltScale;
 	int m_nPltSaveScaleX;
 	int m_nPltSaveScaleY;
+
+	int m_nCutSecLen;
 
 	int m_nToolBarState;
 	bool m_bQueryEnable;

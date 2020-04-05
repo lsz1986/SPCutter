@@ -7,6 +7,9 @@
 // DlgMacPara.h : header file
 //
 #include "Global.h"
+#include "afxwin.h"
+#include "HyperLink.h"
+#include "afxcmn.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CDlgMacPara dialog
@@ -15,13 +18,17 @@ class CDlgMacPara : public CDialog
 {
 // Construction
 public:
+	UINT m_nIpAddr;
+
 	void OnRestorePara(CString ParaFileName);
 	void OnUpdateParaToCtrl();
+	BOOL DirIsEmpty(CString strDir);
 	CDlgMacPara(CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CDlgMacPara)
-	enum { IDD = IDDLG_SET_MAC };
+	enum { IDD = IDDLG_PARA
+	};
 	CComboBox	m_ComboSpType;
 	CComboBox	m_ctrlComboEndPos;
 	BOOL	m_bSp1;
@@ -39,7 +46,8 @@ public:
 	int		m_nKVolt_Start;
 	int		m_nKVolt_Work;
 	int		m_iAngleAdjust;
-	int		m_nAutoCutLen;
+	int		m_nCutPaperStart;
+	int		m_nCutPaperEnd;
 	UINT	m_nOverCutLen;
 	int		m_nJobEndPosXmm;
 	int		m_nJobEndPosYmm;
@@ -63,7 +71,6 @@ protected:
 	// Generated message map functions
 	//{{AFX_MSG(CDlgMacPara)
 	virtual BOOL OnInitDialog();
-	virtual void OnOK();
 	afx_msg void OnCheck1();
 	afx_msg void OnCheck2();
 	afx_msg void OnProtectPara();
@@ -76,6 +83,17 @@ protected:
 	afx_msg void On1512();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnBnClickedButton1();
+	CHyperLink m_hyperLinkDataDir;
+	CString m_strTempDataDir;
+	afx_msg void OnBnClickedOk();
+	int m_nBlankMM;
+	BOOL m_bPlotOnly;
+	BOOL m_bAutoClean;
+	BOOL m_bJobAutoStart;
+	afx_msg void OnBnClickedIpDefault();
+	CIPAddressCtrl m_ctrlMachineAddr;
 };
 
 //{{AFX_INSERT_LOCATION}}

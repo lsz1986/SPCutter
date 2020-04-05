@@ -44,14 +44,13 @@ public:
 	void OnZoomAll();
 	void OnReDraw();
 
-public:
-	int m_nCurrentPage;
-
 private:
 	BOOL m_bLBDown;
+	BOOL m_bRBDown;
 	CPoint m_ptLBDown;
+	CPoint m_ptRBDown;
 	CPoint m_ptMouseMove;
-
+	int m_nCurrentPage;
 public:
 	void OnSetViewCursor();
 	void ResetSelectStatus();
@@ -83,6 +82,11 @@ protected:
 	afx_msg void OnBreakCurve();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	void OnViewZoomIn(CPoint ptMouse);
+	void OnViewZoomOut(CPoint ptMouse);
+	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 };
 
 #ifndef _DEBUG  // debug version in CutPlotterView.cpp

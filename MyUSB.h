@@ -8,91 +8,35 @@
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
-
-#include "libusb\\lusb0_usb.h"
 #include "GlobalDef.h"
 #include "afxmt.h"
 
-#define CMD_HEAD "ZHV6"
+#include "LibUsb\\lusb0_usb.h"
+#define MY_VID 0xA728 //厂商ID
+#define MY_PID 0x0701 //产品ID 切绘带网络
+
+#define EP1_IN 0x81
+#define EP2_OUT 0x02
+#define EP3_OUT 0x03
 class CMyUSB  
 {
 public:
-	int m_nDeviceFound;
-	CRITICAL_SECTION m_cs;
-
-public:
-	int OnSendUsbKeyValue_0(u8 KeyVal);
-	int OnSendUsbKeyValue(u8 KeyVal);
-
-	int OnWorkCmdStart_0(int XSizeCut,int YSizeCut,int nPackSum,int YPixPlot,u8 Pause);
-	int OnWorkCmdStart(int XSizeCut,int YSizeCut,int nPackSum,int YPixPlot,u8 Pause);
-
-	int OnWorkCtrl_0(u8 CtrlType); 
-	int OnWorkCtrl(u8 CtrlType); 
-
-	int OnWorkCmdPlot_0(int nPackNum,u8 dir);
-	int OnWorkCmdPlot(int nPackNum,u8 dir);
-
-	int OnWorkCmdCut_0(int nCutSum);
-	int OnWorkCmdCut(int nCutSum);
-
-	int OnResetRcvAddr_0();
-	int OnResetRcvAddr();
-
-	int OnGetLastTime_0();
-	int OnGetLastTime();
-
-	int OnSetLastTime_0(u32 Time);
-	int OnSetLastTime(u32 Time);
-
-	int OnGetDeblockCode_0();
-	int OnGetDeblockCode();
-
-	int OnSetDeblockCode_0(u32 debCode);
-	int OnSetDeblockCode(u32 debCode);
-
-	int OnEraseMcuFlash_0();
-	int OnEraseMcuFlash();
-
-	int OnGetChipID_0();
-	int OnGetChipID();
-
-	int OnPumpCtrl_0(BOOL b);
-	int OnPumpCtrl(BOOL b);
-
-	int OnCutDown_0(u8 CutPwm);
-	int OnCutDown(u8 CutPwm);
-
-	int OnSetZp_0();
-	int OnSetZp();
-
-	int OnSysReset_0();
-	int OnSysReset();
-
-	int OnToDefZp_0();
-	int OnToDefZp();
-
-	int OnSpClean_0();
-	int OnSpClean();
-
-	int OnParaWrite_0();
-	int OnParaWrite();
-
-	int OnParaRead_0();
-	int OnParaRead();
-
-	int OnGetMacState_0();
-	int OnGetMacState();
-
-	int WriteBulk(char *pbBuf, ULONG len);
-
-	int WriteCmd(char *pbBuf, ULONG len);
-	void Close();
-	int Open();
-	int Read(char *pbBuf, ULONG len);
-	usb_dev_handle *m_pUSBdev;
 	CMyUSB();
 	virtual ~CMyUSB();
-};
+	int WriteBulk(char *pbBuf, ULONG len);
+	int OnCmd0(u8 cmd);
 
-#endif // !defined(AFX_MYUSB_H__A22D3F96_2E73_4786_AB10_0918E5CE35C0__INCLUDED_)
+	int OnCmd1(u8 cmd, u8 slen, u8* sbuf, u8 rlen, u8* rbuf);
+private:
+	CRITICAL_SECTION m_cs;
+	usb_dev_handle *m_pUSBdev;
+	int m_nDeviceFound;
+
+	void USBClose();
+	int USBOpen();
+	int UsbRead(char *pbBuf, ULONG len);
+	int USBWrite(char *pbBuf, ULONG len);
+	int OnCmd0_USB(u8 cmd);
+	int OnCmd1_USB(u8 cmd, u8 slen, u8* sbuf, u8 rlen, u8* rbuf);
+};
+#endif

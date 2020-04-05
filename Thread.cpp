@@ -2,46 +2,63 @@
 #include "Global.h"
 #include "HpglFile.h"
 #include "Thread.h"
-int gnPackSum=0;
+int gPackSumPlotOnly = 0;
 
-int WaitWorkNone(CWnd* pParent,BOOL bIsPlot);
+int WaitWorkNone();
+int DoWork();
+int DoPlot(int PackNo); //喷墨过程
+int DoCut(void); //切割过程
+void PreparePlotData(int nPlotPackNum);
 
-UINT DoPlot(CWnd* pParent); //喷墨过程
-UINT DoCut(CWnd* pParent); //切割过程
+void PreparePlotData(int nPlotPackNum)
+{
+	if (gSet.getSpType() == 1)
+	{
+		IUT308_SetSpDataZero();
+		GetOnePackOrgData(nPlotPackNum); //获取一包喷墨数据，存入 g_SpDataOrg 中
+		IUT308_ConvertOrgDataToSendData(nPlotPackNum); //将原始数据格式转换成打印数据 存入 g_IUT308_SpDataSend中
+		IUT308_ZipSpSendData();
+	}
+	else
+	{
+		HP45_SetSpDataZero();
+		GetOnePackOrgData(nPlotPackNum); //获取一包喷墨数据，存入 g_SpDataOrg 中
+		HP45_ConvertOrgDataToSendData(nPlotPackNum); //将原始数据格式转换成打印数据 存入 g_HP45_SpDataSend中
+		HP45_ZipSpSendData();
+	}
+}
 
-int WaitWorkNone(CWnd* pParent,BOOL bIsPlot)
+int WaitWorkNone(void)
 {
 	while(1)
 	{
-		if( 0 == gUSB.OnGetMacState() )
+		if (0 == gCommu.OnCmd0(CMD0_GET_STAT)) 
 		{
-			if (THREAD_MESSAGE_CANCEL == gMacSet.getThreadMessage())
+			if (THREAD_MESSAGE_CANCEL == gSet.getThreadMessage())
 			{
-				gUSB.OnWorkCtrl(WORKCMD_CANCEL);
-				gMacSet.setThreadMessage(THREAD_MESSAGE_NONE);
+				Sleep(10);
+				gCommu.OnCmd0(CMD0_WCANCEL);
+				gSet.setThreadMessage(THREAD_MESSAGE_NONE);
 				return ERROR_CANCEL_FILE;
 			}
-			else if (THREAD_MESSAGE_RESUME == gMacSet.getThreadMessage())
+			else if (THREAD_MESSAGE_RESUME == gSet.getThreadMessage())
 			{
-				gUSB.OnWorkCtrl(WORKCMD_RESUME);
-				gMacSet.setThreadMessage(THREAD_MESSAGE_NONE);
+				gCommu.OnCmd0(CMD0_WRESUME);
+				gSet.setThreadMessage(THREAD_MESSAGE_NONE);
 			}
-			else if (THREAD_MESSAGE_PAUSE == gMacSet.getThreadMessage())
+			else if (THREAD_MESSAGE_PAUSE == gSet.getThreadMessage())
 			{
-				gUSB.OnWorkCtrl(WORKCMD_PAUSE);
-				gMacSet.setThreadMessage(THREAD_MESSAGE_NONE);
+				gCommu.OnCmd0(CMD0_WPAUSE);
+				gSet.setThreadMessage(THREAD_MESSAGE_NONE);
 			}
-			if ( ( WORKING != gSysState) &&( WORK_PAUSE != gSysState) )
+			if ( ( WORKING != (gSysState&0x0f) ) &&( WORK_PAUSE != (gSysState & 0x0f)) )
 			{
-				return ERROR_CANCEL_FILE;
+//				return ERROR_CANCEL_FILE; //20170104
+				return ERROR_NONE;
 			}
-			if( (WORKING == gSysState) && (gWorkType == WT_NONE) )
+			if(WORKING == gSysState)
 			{
 				break;
-			}
-			if( (!bIsPlot)||(WORK_PAUSE == gSysState) )
-			{
-				pParent->SendMessage(USER_DISP_STAT,0,0);
 			}
 		}
 		Sleep(10);
@@ -49,171 +66,155 @@ int WaitWorkNone(CWnd* pParent,BOOL bIsPlot)
 	return 0;
 }
 
-UINT DoPlot(CWnd* pParent) //开始喷墨
+int DoPlot(int PackNo) //开始喷墨
 {
 	int rev;
-	int nCurPackNo;
 	u8 PlotDir;
-	if (0 == gnPackSum) //没有打印数据
-	{
-		return 0; //成功完成
-	}
 
-	for (nCurPackNo =0; nCurPackNo<gnPackSum; )
+	if (PackNo<gPackSumPlotOnly)
 	{
-		if (gMacSet.getSpType() == 1)
+		PreparePlotData(PackNo);
+		if ((0 == PackNo % 2)
+			|| (FALSE == gSet.getBiDir())) //喷墨方向TO (Y+)
 		{
-			IUT308_SetSpDataZero(); 
-			GetOnePackOrgData(nCurPackNo); //获取一包喷墨数据，存入 g_SpDataOrg 中
-			IUT308_ConvertOrgDataToSendData(nCurPackNo); //将原始数据格式转换成打印数据 存入 g_SpDataSend中
-			IUT308_ZipSpSendData();
+			PlotDir = 0;
 		}
-		else
+		else //喷墨方向TO (Y-)
 		{
-			HP45_SetSpDataZero(); 
-			GetOnePackOrgData(nCurPackNo); //获取一包喷墨数据，存入 g_SpDataOrg 中
-			HP45_ConvertOrgDataToSendData(nCurPackNo); //将原始数据格式转换成打印数据 存入 g_SpDataSend中
-			HP45_ZipSpSendData();
+			PlotDir = 1;
 		}
 
-		rev = WaitWorkNone(pParent,TRUE);
-		if( rev !=0 ) 
-			return rev;
-
-		if(gUSB.WriteBulk( (char*)(&(g_ZippedSpDataSend[0])),g_iSpdataSizeZipped ) == g_iSpdataSizeZipped ) //数据包发送成功
+		if(gCommu.WriteBulk( (char*)(&(g_ZippedSpDataSend[0])),g_iSpdataSizeZipped ) == g_iSpdataSizeZipped ) //数据包发送成功
 		{
-			Sleep(10);
-			if ( (gMacSet.getBiDir())&&(nCurPackNo%2 == 1) )
+			u8 sbuf[64];
+			u8 rbuf[64];
+			*((int*)(&sbuf[0])) = PackNo; //包号，
+			sbuf[4] = PlotDir;	//喷墨距离
+
+			rev = gCommu.OnCmd1(CMD1_PLOT, 5, sbuf, 1, rbuf);
+			if (0 == rev)
 			{
-				PlotDir = 1;
+				return 0;
 			}
 			else
 			{
-				PlotDir = 0;
+				return -1;
 			}
-			gUSB.OnWorkCmdPlot(nCurPackNo,PlotDir);
-			gWorkType = WT_PLOTTING;
-			pParent->SendMessage(USER_DISP_STAT,nCurPackNo,gnPackSum); //显示打印进度
-			nCurPackNo++;
 		}
 		else
 		{
-			gUSB.OnResetRcvAddr(); //重置接收地址
-			Sleep(10);
-		}
-
-		if (THREAD_MESSAGE_CANCEL == gMacSet.getThreadMessage())
-		{
-			gUSB.OnWorkCtrl(WORKCMD_CANCEL);
-			gMacSet.setThreadMessage(THREAD_MESSAGE_NONE);
-			return ERROR_CANCEL_FILE;
-		}
-
-		if (THREAD_MESSAGE_RESUME == gMacSet.getThreadMessage())
-		{
-			gUSB.OnWorkCtrl(WORKCMD_RESUME);
-			gMacSet.setThreadMessage(THREAD_MESSAGE_NONE);
-		}
-		if (THREAD_MESSAGE_PAUSE == gMacSet.getThreadMessage())
-		{
-			gUSB.OnWorkCtrl(WORKCMD_PAUSE);
-			gMacSet.setThreadMessage(THREAD_MESSAGE_NONE);
+			return -1;
 		}
 	}
-
-	rev = WaitWorkNone(pParent,TRUE);
-	if( rev !=0 ) 
-		return rev;
 	return 0;
 }
 
 UINT ThreadWork(LPVOID pParam)
 {
 	int rev=0;
-	CWnd* pParent = (CWnd *) ((ST_THREAD_PARA *)pParam)->m_pWnd;
+	u8 rbuf[64];
+	u8 sbuf[64];
 	CalcPlotPackSum(); //计算喷墨数据的包数
+//TODO 判断是否超过幅宽
 
-	if( (gMacSet.getWorkStartPause() ) || ( gMacSet.getFirstPageConfirm() ) )
+	*((int*)(&sbuf[0])) = (int)(gWorkingPage.m_nXmax / 40.0*gSet.getPPMMX());//PLT文件X
+	*((int*)(&sbuf[4])) = g_iMacPixelY;//BMPY像素
+
+	if( (gSet.getWorkStartPause() ) || ( gSet.getFirstPageConfirm() ) )
 	{
-		rev = gUSB.OnWorkCmdStart(gnCncXMax,gnCncYMax,gnPackSum,g_iMacPixelY,1);
+		rev = gCommu.OnCmd1(CMD1_NEWF_PAUSE, 8, sbuf, 1, rbuf);
 	}
 	else
 	{
-		rev = gUSB.OnWorkCmdStart(gnCncXMax,gnCncYMax,gnPackSum,g_iMacPixelY,0);
+		rev = gCommu.OnCmd1(CMD1_NEWF_RUN, 8, sbuf, 1, rbuf);
 	}
-	gMacSet.setWorkStartPause(FALSE);
+	gSet.setWorkStartPause(FALSE);
 
 	if (rev !=0)
 	{
-		switch (rev)
-		{
-		case -1:
-			AfxMessageBox("USB Error!");
-			break;
-			
-		case ERROR_XYSIZE:
-			if (gDispSet.getLanguage() == 0){
-				AfxMessageBox("超出切割范围！请重设原点或检查文件尺寸。");
-			}else{
-				AfxMessageBox("Out Of Size!");
-			}
-			break;
-			
-		case ERROR_NOTREADY:
-			AfxMessageBox("Not Ready");
-			break;
+		if (gDispSet.getLanguage() == 0){
+			AfxMessageBox("发送命令失败,请重试");
+		}else{
+			AfxMessageBox("Send Command failed,Please retry!");
 		}
-		pParent->SendMessage(USER_END_WTHREAD,1,0); //删除线程并删除表头
+
+		g_pMainfrm->SendMessage(USER_END_WTHREAD,1,0); //删除线程并删除表头
 		return 0;
 	}
 
-	rev = DoPlot(pParent);
-	if (rev != 0 )
+ 	rev = DoWork();
+	if (ERROR_NONE == rev)
 	{
-		if (ERROR_CANCEL_FILE == rev)
-		{
-			pParent->SendMessage(USER_END_WTHREAD,2,0); //删除线程并删除全部
-		}
-		else
-		{
-			pParent->SendMessage(USER_END_WTHREAD,1,0); //删除线程并删除表头
-			gUSB.OnWorkCtrl(WORKCMD_CANCEL);
-		}
-		return 0;
+//		gCommu.OnCmd0(CMD0_WEND);
+		g_pMainfrm->SendMessage(USER_END_WTHREAD, 1, 0); //删除线程并删除表头
 	}
-	rev = DoCut(pParent);
-	if (ERROR_CANCEL_FILE == rev)
+	else if (ERROR_CANCEL_FILE == rev)
 	{
-		pParent->SendMessage(USER_END_WTHREAD,2,0); //删除线程并删除全部
-		return 0;
-	}
-	if (g_ptrCncList.GetSize() == 0)
-	{
-		gUSB.OnWorkCtrl(WORKCMD_CANCEL);
+		gCommu.OnCmd0(CMD0_WCANCEL);
+		g_pMainfrm->SendMessage(USER_END_WTHREAD, 2, 0); //删除线程并将第一个文件状态设置为手动
 	}
 	else
 	{
-		gUSB.OnWorkCtrl(WORKCMD_END);
+		gCommu.OnCmd0(CMD0_WCANCEL);
+		g_pMainfrm->SendMessage(USER_END_WTHREAD, 1, 0); //删除线程并删除表头
 	}
-	pParent->SendMessage(USER_END_WTHREAD,1,0); //删除线程并删除表头
 	return 0;
 }
 
-UINT DoCut(CWnd* pParent)
+int DoWork()
 {
 	int rev;
-	rev = WaitWorkNone(pParent,FALSE);
-	if( rev !=0 ) 
-		return rev;
+	int iPackNum; //当前的喷墨包号
+	iPackNum = 0;
+	while (1)
+	{
+		rev = WaitWorkNone();
+		if (gSet.getParaUpdateFlag())
+		{
+			WritePlotPara();
+			gSet.setParaUpdateFlag(FALSE);
+		}
+		if (rev != ERROR_NONE)
+		{
+			return rev;
+		}
+		if (iPackNum > gPackSumPlotOnly)
+		{
+			break;
+		}
 
-	rev = SendCncData();
-	if (rev != 0)
-		return rev;
+		gPlotPackNo = iPackNum; //更新显示
+		rev = DoPlot(iPackNum);
+		if (rev != 0)
+		{
+			return rev;
+		}
+		iPackNum++;
+	}
+	if (DoCut() != 0)
+	{
+		return ERROR_CANCEL_FILE; //待修改
+	}
+	return ERROR_NONE;
+}
 
-	int nCncSize = g_ptrCncList.GetSize();
-	rev = gUSB.OnWorkCmdCut(nCncSize);
-	if (rev != 0)
-		return rev;
-	rev = WaitWorkNone(pParent,FALSE);
-	return 0;
+int DoCut(void)
+{
+	int nCncSize;
+	int rev;
+	u8 sbuf[64];
+	u8 rbuf[64];
+
+	nCncSize = g_ptrCncList.GetSize();
+
+	if (SendCncData() == 0)
+	{
+		*((int*)(&sbuf[0])) = nCncSize;
+		rev = gCommu.OnCmd1(CMD1_CUT, 4, sbuf, 1, rbuf);
+		if (rev != 0)
+			return rev;
+		Sleep(1);
+	}
+	rev = WaitWorkNone();
+	return rev;
 }
